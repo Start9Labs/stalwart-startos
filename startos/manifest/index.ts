@@ -13,7 +13,7 @@ export const manifest = setupManifest({
   volumes: ['main'],
   images: {
     stalwart: {
-      source: { dockerTag: 'stalwartlabs/stalwart:v0.16.24' },
+      source: { dockerTag: 'stalwartlabs/stalwart:v0.16.25' },
       arch: ['x86_64', 'aarch64'],
     },
   },

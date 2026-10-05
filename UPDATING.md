@@ -4,11 +4,14 @@ This package wraps the Docker image upstream publishes for each release of [stal
 
 ## Determining the upstream version
 
-- **Stalwart** ([stalwartlabs/stalwart](https://github.com/stalwartlabs/stalwart)) — fetch the latest release tag:
+- **Stalwart** ([stalwartlabs/stalwart](https://github.com/stalwartlabs/stalwart)) — inspect the tags and stable releases rather than relying on GitHub's "Latest" badge:
 
   ```sh
-  gh release view -R stalwartlabs/stalwart --json tagName -q .tagName
+  gh api 'repos/stalwartlabs/stalwart/tags?per_page=100' --jq '.[].name'
+  gh api 'repos/stalwartlabs/stalwart/releases?per_page=100' --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name'
   ```
+
+  Choose the highest stable version whose image is published for both supported architectures. If its image is not yet published, try the next newest stable release.
 
   The current pin lives in `startos/manifest/index.ts` at `images.stalwart.source.dockerTag`, as `stalwartlabs/stalwart:<tag>` with the tag's leading `v` kept. Confirm the tag is on Docker Hub for both architectures before pinning it:
 
