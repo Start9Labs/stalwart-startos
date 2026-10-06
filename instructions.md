@@ -72,8 +72,8 @@ Give this address to your users. They sign in with their own email address and p
 
 ### Actions
 
-- **Set Admin Password** — generates a new password for the `admin` account and shows it once. Run it whenever you have lost the password. It takes effect the next time Stalwart starts.
-- **Show DNS Records** — lists the records to publish for each domain Stalwart hosts. Run it after adding a domain, and again if you rotate DKIM keys.
+- **Set Admin Password** — generates a new password for the `admin` account and shows it once. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then.
+- **Show DNS Records** — lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. Run it after adding a domain, and again if you rotate DKIM keys.
 
 ## Limitations
 

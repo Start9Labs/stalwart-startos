@@ -43,6 +43,7 @@ export default {
     38: 'Publica estos registros en tu proveedor de DNS.',
     39: 'Registros de dirección',
     40: 'Aún no hay ninguna dirección pública habilitada en la interfaz SMTP, así que no hay registro de dirección que publicar. Habilita una y vuelve a ejecutar esta acción.',
+    41: 'Sustituye la contraseña de administrador actual. La contraseña anterior deja de funcionar la próxima vez que se inicie Stalwart.',
   },
   de_DE: {
     0: 'Starte Stalwart!',
@@ -86,6 +87,7 @@ export default {
     38: 'Veröffentliche diese Einträge bei deinem DNS-Anbieter.',
     39: 'Adresseinträge',
     40: 'Auf der SMTP-Schnittstelle ist noch keine öffentliche Adresse aktiviert, daher gibt es keinen Adresseintrag zu veröffentlichen. Aktiviere eine und führe die Aktion erneut aus.',
+    41: 'Ersetzt das aktuelle Administratorpasswort. Das alte Passwort funktioniert ab dem nächsten Start von Stalwart nicht mehr.',
   },
   pl_PL: {
     0: 'Uruchamianie Stalwart!',
@@ -129,6 +131,7 @@ export default {
     38: 'Opublikuj te rekordy u swojego dostawcy DNS.',
     39: 'Rekordy adresu',
     40: 'Na interfejsie SMTP nie jest jeszcze włączony żaden adres publiczny, więc nie ma rekordu adresu do opublikowania. Włącz jeden i uruchom tę akcję ponownie.',
+    41: 'Zastępuje obecne hasło administratora. Stare hasło przestanie działać przy następnym uruchomieniu Stalwart.',
   },
   fr_FR: {
     0: 'Démarrage de Stalwart !',
@@ -172,5 +175,6 @@ export default {
     38: 'Publiez ces enregistrements chez votre fournisseur DNS.',
     39: "Enregistrements d'adresse",
     40: "Aucune adresse publique n'est encore activée sur l'interface SMTP, il n'y a donc pas d'enregistrement d'adresse à publier. Activez-en une, puis relancez cette action.",
+    41: "Remplace le mot de passe administrateur actuel. L'ancien mot de passe cesse de fonctionner au prochain démarrage de Stalwart.",
   },
 } satisfies Record<string, LangDict>
