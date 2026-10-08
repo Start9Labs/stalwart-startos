@@ -7,12 +7,16 @@ import { recoveryAdminUser } from '../utils'
 export const setAdminPassword = sdk.Action.withoutInput(
   'set-admin-password',
 
-  async () => ({
+  async ({ effects }) => ({
     name: i18n('Set Admin Password'),
     description: i18n(
       '<p>Generate a new random password for the Stalwart administrator account.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>',
     ),
-    warning: null,
+    warning: (await storeJson.read((s) => s.adminPassword).const(effects))
+      ? i18n(
+          'Replaces the current admin password. The old password stops working the next time Stalwart starts.',
+        )
+      : null,
     allowedStatuses: 'only-stopped',
     group: i18n('Setup'),
     visibility: 'enabled',

@@ -48,6 +48,7 @@ const dict = {
   'Publish these records at your DNS provider.': 38,
   'Address records': 39,
   'No public address is enabled on the SMTP interface yet, so there is no address record to publish. Enable one, then run this again.': 40,
+  'Replaces the current admin password. The old password stops working the next time Stalwart starts.': 41,
 } as const
 
 /**
