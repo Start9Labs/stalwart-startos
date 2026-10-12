@@ -71,6 +71,9 @@ export const showDnsRecords = sdk.Action.withoutInput(
             description: null,
             value: records.join('\n'),
             copyable: true,
+            qr: false,
+            masked: false,
+            filename: null,
           })),
           ...domains.map(({ name, dnsZoneFile }) => ({
             type: 'multiline' as const,
@@ -78,6 +81,8 @@ export const showDnsRecords = sdk.Action.withoutInput(
             description: null,
             value: dnsZoneFile,
             copyable: true,
+            qr: false,
+            masked: false,
             filename: `${name}.zone`,
           })),
         ],
