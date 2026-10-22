@@ -32,7 +32,7 @@
 
 ## Image and Container Runtime
 
-The package runs upstream's own Docker image unmodified, on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
+The package runs upstream's Docker image with its CA store upgraded by the root `Dockerfile` (a temporary layer that comes out once upstream ships an image built on a fixed store), on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
 
 Two subcontainers run from that image on every start:
 

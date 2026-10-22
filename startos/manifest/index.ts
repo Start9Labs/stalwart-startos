@@ -13,7 +13,9 @@ export const manifest = setupManifest({
   volumes: ['main'],
   images: {
     stalwart: {
-      source: { dockerTag: 'stalwartlabs/stalwart:v0.16.27' },
+      source: {
+        dockerBuild: { buildArgs: { IMAGE: 'stalwartlabs/stalwart:v0.16.27' } },
+      },
       arch: ['x86_64', 'aarch64'],
     },
   },
