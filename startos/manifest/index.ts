@@ -18,5 +18,14 @@ export const manifest = setupManifest({
       },
       arch: ['x86_64', 'aarch64'],
     },
+    migrate: {
+      source: {
+        dockerBuild: {
+          dockerfile: 'migrate.Dockerfile',
+          buildArgs: { IMAGE: 'stalwartlabs/stalwart-migrate:1.0.1' },
+        },
+      },
+      arch: ['x86_64', 'aarch64'],
+    },
   },
 })

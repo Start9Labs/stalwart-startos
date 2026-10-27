@@ -133,6 +133,7 @@ async function configure(
       {
         create: {
           acme: {
+            description: "Let's Encrypt",
             challengeType: 'Http01',
             contact: { [`postmaster@${domain}`]: true },
           },

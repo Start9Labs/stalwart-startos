@@ -1,46 +1,173 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
+import { mkdir, rename, rm } from 'node:fs/promises'
+import { configJson } from '../fileModels/store.json'
+import { sdk } from '../sdk'
+import { dataDir, etcDir, legacyDir, stalwartUid } from '../utils'
+
+const targetSubpath = 'data-v1'
+const stateSubpath = 'migrate'
+const targetDir = '/var/lib/stalwart-v1'
+const stateDir = '/var/lib/stalwart-migrate'
+
+const migrateMounts = sdk.Mounts.of()
+  .mountVolume({
+    volumeId: 'main',
+    subpath: 'etc',
+    mountpoint: etcDir,
+    readonly: true,
+  })
+  .mountVolume({
+    volumeId: 'main',
+    subpath: 'data',
+    mountpoint: dataDir,
+    readonly: true,
+  })
+  .mountVolume({
+    volumeId: 'main',
+    subpath: targetSubpath,
+    mountpoint: targetDir,
+    readonly: false,
+  })
+  .mountVolume({
+    volumeId: 'main',
+    subpath: stateSubpath,
+    mountpoint: stateDir,
+    readonly: false,
+  })
+
+// Every question `stalwart-migrate prepare` asks of a store this package bootstrapped.
+const answers = `version = 1
+
+[global.categories]
+include = ["settings", "principals", "mail", "calendars", "contacts", "files", "sieve", "identities", "push_subscriptions", "spam_samples", "reports", "archive", "spam_model", "queue", "tasks", "telemetry"]
+
+[instance.oauth_registration."x:OidcProvider"]
+action = "accept"
+
+[global.new_permissions]
+action = "grant"
+
+[instance.http_forwarded."x:Http"]
+source = "xForwardedFor"
+hops = 1
+
+[global.changed_defaults]
+policy = "recommended"
+`
 
 export const current = VersionInfo.of({
   version: '1.0.0:0',
   releaseNotes: {
-    en_US: `Updated Stalwart to 1.0.0 with attachment and file full-text search, IMAP metadata, expanded OAuth controls, and bug and security fixes. Updated start-sdk to 3.1.1. Removed the temporary CA-store layer; upstream's image now excludes the compromised eMudhra root.
+    en_US: `Updated Stalwart to 1.0.0, with full-text search in attachments and files, IMAP metadata, expanded OAuth controls, and bug and security fixes.
 
-Console and Account Manager login require HTTPS on the hostname chosen at setup; arbitrary StartOS addresses are not supported for login. Bootstrap, local API probes and ACME retry handling are adapted to the new server API.
+- The update converts your mail server's data to Stalwart 1.0's format. It needs free disk space for a second copy of that data, and takes longer the more mail you store.
+- If you added an OpenID Connect directory or an AI model in the Admin Console, the update stops and your server stays on the previous version; the service log shows why.
+- The Admin Console and Account Manager sign in only at \`https://\` followed by the hostname you chose at setup.
+- OAuth clients sign in again, calendar, contact and file clients download their data once more, and search results are incomplete until the search index is rebuilt.
 
-**Fresh installations only.** This release cannot update existing 0.16.x installations or restore their backups: Stalwart 1.0 requires an explicit database and settings conversion, which is not integrated into this package. Do not uninstall an existing mail server to update it.
+[Full release notes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0)`,
+    es_ES: `Stalwart actualizado a 1.0.0, con búsqueda de texto completo en adjuntos y archivos, metadatos IMAP, más controles OAuth y correcciones de errores y seguridad.
 
-[Full release notes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0) · [Upstream migration documentation](https://github.com/stalwartlabs/stalwart-migrate)`,
-    es_ES: `Stalwart actualizado a 1.0.0 con búsqueda de texto completo en adjuntos y archivos, metadatos IMAP, más controles OAuth y correcciones de errores y seguridad. start-sdk actualizado a 3.1.1. Se elimina la capa temporal de certificados; la imagen de origen ya excluye la raíz eMudhra comprometida.
+- La actualización convierte los datos de tu servidor de correo al formato de Stalwart 1.0. Necesita espacio libre en disco para una segunda copia de esos datos y tarda más cuanto más correo guardes.
+- Si añadiste un directorio OpenID Connect o un modelo de IA en la consola de administración, la actualización se detiene y tu servidor sigue en la versión anterior; el registro del servicio indica el motivo.
+- La consola de administración y el gestor de cuentas solo permiten iniciar sesión en \`https://\` seguido del nombre de host elegido durante la configuración.
+- Los clientes OAuth deben iniciar sesión de nuevo, los clientes de calendario, contactos y archivos vuelven a descargar sus datos y las búsquedas son incompletas hasta que se reconstruya el índice.
 
-El inicio de sesión en la consola y el gestor de cuentas requiere HTTPS en el nombre de host elegido durante la configuración; las direcciones arbitrarias de StartOS no son compatibles. Se adaptan la inicialización, las comprobaciones locales de la API y los reintentos ACME a la nueva API del servidor.
+[Notas completas de la versión](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0)`,
+    de_DE: `Stalwart auf 1.0.0 aktualisiert: Volltextsuche in Anhängen und Dateien, IMAP-Metadaten, erweiterte OAuth-Steuerung sowie Fehler- und Sicherheitskorrekturen.
 
-**Solo instalaciones nuevas.** Esta versión no permite actualizar instalaciones 0.16.x ni restaurar sus copias de seguridad: Stalwart 1.0 requiere una conversión explícita de la base de datos y los ajustes, no integrada en este paquete. No desinstales un servidor de correo existente para actualizarlo.
+- Das Update wandelt die Daten Ihres Mailservers in das Format von Stalwart 1.0 um. Es benötigt freien Speicherplatz für eine zweite Kopie dieser Daten und dauert umso länger, je mehr E-Mails gespeichert sind.
+- Wenn Sie in der Admin-Konsole ein OpenID-Connect-Verzeichnis oder ein KI-Modell hinzugefügt haben, bricht das Update ab und Ihr Server bleibt auf der bisherigen Version; das Dienstprotokoll nennt den Grund.
+- Die Anmeldung an Admin-Konsole und Kontoverwaltung ist nur unter \`https://\` gefolgt vom bei der Einrichtung gewählten Hostnamen möglich.
+- OAuth-Clients müssen sich erneut anmelden, Kalender-, Kontakt- und Datei-Clients laden ihre Daten erneut herunter, und Suchergebnisse sind unvollständig, bis der Suchindex neu aufgebaut ist.
 
-[Notas completas de la versión](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0) · [Documentación de migración del proyecto](https://github.com/stalwartlabs/stalwart-migrate)`,
-    de_DE: `Stalwart auf 1.0.0 aktualisiert: Volltextsuche in Anhängen und Dateien, IMAP-Metadaten, erweiterte OAuth-Steuerung sowie Fehler- und Sicherheitskorrekturen. start-sdk auf 3.1.1 aktualisiert. Die temporäre Zertifikatsschicht entfällt; das Upstream-Image enthält das kompromittierte eMudhra-Wurzelzertifikat nicht mehr.
+[Vollständige Versionshinweise](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0)`,
+    pl_PL: `Zaktualizowano Stalwart do 1.0.0: wyszukiwanie pełnotekstowe w załącznikach i plikach, metadane IMAP, rozszerzone opcje OAuth oraz poprawki błędów i bezpieczeństwa.
 
-Die Anmeldung an Konsole und Kontoverwaltung erfordert HTTPS unter dem bei der Einrichtung gewählten Hostnamen; beliebige StartOS-Adressen werden nicht unterstützt. Initialisierung, lokale API-Prüfungen und ACME-Wiederholungen sind an die neue Server-API angepasst.
+- Aktualizacja konwertuje dane serwera poczty do formatu Stalwart 1.0. Wymaga wolnego miejsca na dysku na drugą kopię tych danych i trwa tym dłużej, im więcej poczty przechowujesz.
+- Jeśli w konsoli administracyjnej dodano katalog OpenID Connect lub model AI, aktualizacja zostanie przerwana, a serwer pozostanie przy poprzedniej wersji; dziennik usługi wskazuje przyczynę.
+- Logowanie do konsoli administracyjnej i menedżera kont działa tylko pod adresem \`https://\` z nazwą hosta wybraną podczas konfiguracji.
+- Klienci OAuth muszą zalogować się ponownie, klienci kalendarza, kontaktów i plików ponownie pobiorą dane, a wyniki wyszukiwania są niepełne do czasu odbudowy indeksu.
 
-**Nur für Neuinstallationen.** Bestehende 0.16.x-Installationen können weder aktualisiert noch ihre Sicherungen wiederhergestellt werden: Stalwart 1.0 erfordert eine ausdrückliche Konvertierung der Datenbank und Einstellungen, die dieses Paket nicht integriert. Einen bestehenden Mailserver nicht zum Aktualisieren deinstallieren.
+[Pełne informacje o wydaniu](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0)`,
+    fr_FR: `Stalwart mis à jour vers 1.0.0 : recherche plein texte dans les pièces jointes et les fichiers, métadonnées IMAP, contrôles OAuth étendus et correctifs de bogues et de sécurité.
 
-[Vollständige Versionshinweise](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0) · [Upstream-Migrationsdokumentation](https://github.com/stalwartlabs/stalwart-migrate)`,
-    pl_PL: `Zaktualizowano Stalwart do 1.0.0: wyszukiwanie pełnotekstowe załączników i plików, metadane IMAP, rozszerzone opcje OAuth oraz poprawki błędów i bezpieczeństwa. Zaktualizowano start-sdk do 3.1.1. Usunięto tymczasową warstwę certyfikatów; obraz źródłowy nie zawiera już przejętego certyfikatu głównego eMudhra.
+- La mise à jour convertit les données de votre serveur de messagerie au format de Stalwart 1.0. Elle nécessite de l’espace disque libre pour une seconde copie de ces données et dure d’autant plus longtemps que vous stockez de courrier.
+- Si vous avez ajouté un annuaire OpenID Connect ou un modèle d’IA dans la console d’administration, la mise à jour s’arrête et votre serveur reste sur la version précédente ; le journal du service en indique la raison.
+- La connexion à la console d’administration et au gestionnaire de comptes ne fonctionne qu’à l’adresse \`https://\` suivie du nom d’hôte choisi lors de la configuration.
+- Les clients OAuth doivent se reconnecter, les clients de calendrier, de contacts et de fichiers téléchargent à nouveau leurs données, et les recherches sont incomplètes jusqu’à la reconstruction de l’index.
 
-Logowanie do konsoli i menedżera kont wymaga HTTPS pod nazwą hosta wybraną podczas konfiguracji; dowolne adresy StartOS nie są obsługiwane. Dostosowano inicjalizację, lokalne sprawdzanie API i ponawianie ACME do nowego API serwera.
-
-**Tylko nowe instalacje.** Ta wersja nie umożliwia aktualizacji instalacji 0.16.x ani przywracania ich kopii zapasowych: Stalwart 1.0 wymaga jawnej konwersji bazy danych i ustawień, której ten pakiet nie integruje. Nie odinstalowuj działającego serwera poczty w celu aktualizacji.
-
-[Pełne informacje o wydaniu](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0) · [Dokumentacja migracji projektu](https://github.com/stalwartlabs/stalwart-migrate)`,
-    fr_FR: `Stalwart mis à jour vers 1.0.0 : recherche plein texte dans les pièces jointes et fichiers, métadonnées IMAP, contrôles OAuth étendus et correctifs de sécurité et de bogues. start-sdk mis à jour vers 3.1.1. La couche temporaire de certificats est supprimée ; l’image amont exclut désormais la racine eMudhra compromise.
-
-La connexion à la console et au gestionnaire de comptes exige HTTPS sur le nom d’hôte choisi lors de la configuration ; les adresses StartOS arbitraires ne sont pas prises en charge. L’initialisation, les vérifications locales de l’API et les tentatives ACME sont adaptées à la nouvelle API du serveur.
-
-**Nouvelles installations uniquement.** Cette version ne permet ni de mettre à jour les installations 0.16.x ni de restaurer leurs sauvegardes : Stalwart 1.0 exige une conversion explicite de la base de données et des paramètres, non intégrée dans ce paquet. Ne désinstallez pas un serveur de messagerie existant pour le mettre à jour.
-
-[Notes de version complètes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0) · [Documentation de migration amont](https://github.com/stalwartlabs/stalwart-migrate)`,
+[Notes de version complètes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.0.0)`,
   },
   migrations: {
-    up: IMPOSSIBLE,
+    up: async ({ effects }) => {
+      if ((await configJson.read().once()) === null) return
+
+      const main = sdk.volumes.main
+      for (const dir of [targetSubpath, stateSubpath]) {
+        await rm(main.subpath(dir), { recursive: true, force: true })
+        await mkdir(main.subpath(dir), { recursive: true })
+      }
+      await main.writeFile(`${stateSubpath}/answers.toml`, answers)
+      await main.writeFile(
+        `${stateSubpath}/target.json`,
+        JSON.stringify({ '@type': 'RocksDb', path: `${targetDir}/` }),
+      )
+
+      const paths = ['--source', `${etcDir}/config.json`, '--state', stateDir]
+      await sdk.SubContainer.withTemp(
+        effects,
+        { imageId: 'migrate' },
+        migrateMounts,
+        'migrate',
+        async (sub) => {
+          await sub.execFail(
+            [
+              'chown',
+              '-R',
+              `${stalwartUid}:${stalwartUid}`,
+              targetDir,
+              stateDir,
+            ],
+            { user: 'root' },
+          )
+          await sub.execFail([
+            'stalwart-migrate',
+            'prepare',
+            '--non-interactive',
+            ...paths,
+          ])
+          await sub.execFail(
+            [
+              'stalwart-migrate',
+              'run',
+              '--final',
+              '--yes',
+              ...paths,
+              '--target',
+              `${stateDir}/target.json`,
+            ],
+            { timeout: null },
+          )
+        },
+      )
+
+      await mkdir(main.subpath(legacyDir))
+      await rename(main.subpath('data'), main.subpath(`${legacyDir}/data`))
+      await rename(
+        main.subpath('etc/config.json'),
+        main.subpath(`${legacyDir}/config.json`),
+      )
+      await rename(
+        main.subpath(stateSubpath),
+        main.subpath(`${legacyDir}/migrate`),
+      )
+      await rename(main.subpath(targetSubpath), main.subpath('data'))
+      await configJson.write(
+        effects,
+        JSON.stringify({ '@type': 'RocksDb', path: `${dataDir}/` }),
+      )
+    },
     down: IMPOSSIBLE,
   },
 })

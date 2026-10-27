@@ -20,6 +20,9 @@ export const dataDir = '/var/lib/stalwart'
 export const webuiDir = `${dataDir}/webui`
 export const stalwartUid = 2000
 
+// Volume subdirectory holding the 0.16 store and migration state the 1.0 migration left behind.
+export const legacyDir = 'v0.16'
+
 export const recoveryAdminUser = 'admin'
 
 export const mounts = sdk.Mounts.of()

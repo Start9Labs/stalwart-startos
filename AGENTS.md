@@ -42,3 +42,4 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **Keep the second bootstrap run a normal-mode start, not recovery mode** — only a normal start provisions the default listeners, including the `pop3s` one bootstrap deletes.
 - **Don't drop the `acme` oneshot in `main` or gate it on install** — Stalwart never reschedules a locked or failed renewal itself, so the oneshot is what makes a restart retry issuance.
 - **Keep that oneshot creating the `AcmeRenewal` singleton, not destroying and recreating it** — upstream forbids destroying an automatic domain's renewal task.
+- **Don't drop or lower the `0.16.27:0` floor in `startos/versions/`** — `stalwart-migrate` reads only 0.16.27 stores, and the floor is what makes StartOS route older 0.16 installs through 0.16.27:1.

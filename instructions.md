@@ -80,5 +80,4 @@ Give `https://mail.example.com/account/` (using your setup hostname) to your use
 - Many ISPs and some VPS providers block outgoing connections on port 25, which stops Stalwart from delivering mail to other servers. If your provider does, ask them to unblock it or configure a relay host in the Admin Console.
 - The email domain and hostname you chose during setup can only be changed in the Admin Console afterwards, not from StartOS.
 - POP3 is not exposed. Use IMAP.
-- This package supports fresh Stalwart 1.x installations and their backups. Backups from Stalwart 0.16.x require their matching package version; they cannot be restored into this package.
 - After restoring Stalwart from a backup, add the public domain and enable the public addresses on the mail interfaces again; they are not part of the backup.
