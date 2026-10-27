@@ -32,7 +32,7 @@
 
 ## Image and Container Runtime
 
-The package runs upstream's Docker image with its CA store upgraded by the root `Dockerfile` (a temporary layer that comes out once upstream ships an image built on a fixed store), on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
+The package runs upstream's unmodified Docker image on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
 
 Two subcontainers run from that image on every start:
 
@@ -88,9 +88,9 @@ All bindings share one host (`mail`). The web listener is proxied by StartOS; ev
 
 StartOS does not let a package claim a host port below 1025 and publishes a raw port on the same number it holds on the box, so the standard mail ports cannot be published by the package itself. The published numbers above are fixed so that a user can map `25 → 2525`, `465 → 10465`, `993 → 10993` and `4190 → 14190` once on their gateway; if one of them is already taken on the box StartOS assigns a random port instead and the Interfaces tab shows the real number.
 
-Stalwart's `defaultHostname` is the hostname chosen at setup, so its `.well-known` discovery documents, SRV records and autoconfig point at `https://<hostname>` and the standard ports. The web console itself is origin-relative — its login works at any StartOS address, LAN, Tor or public — because its discovery endpoint returns path-relative URLs on the plain-HTTP session the proxy opens. `STALWART_PUBLIC_URL` is deliberately unset.
+Stalwart's `defaultHostname` is the hostname chosen at setup, so its `.well-known` discovery documents, SRV records and autoconfig point at `https://<hostname>` and the standard ports. The web console and Account Manager require HTTPS on that hostname: first-party OAuth clients are restricted to trusted HTTP service hostnames. Arbitrary StartOS addresses are not supported for console login. Publish the setup hostname on the `admin` interface before logging in, then use `https://<hostname>/admin/` or `/account/`. `STALWART_PUBLIC_URL` remains unset; no alternate proxy address is imposed on discovery.
 
-Stalwart trusts `X-Forwarded-For` on the HTTP listener (`useXForwarded`), which StartOS sets on the proxied binding, so web logins are rate-limited and auto-banned by client address rather than by the proxy's.
+Stalwart reads `X-Forwarded-For` from one trusted proxy hop on the HTTP listener (`clientIpSource`), which StartOS sets on the proxied binding, so web logins are rate-limited and auto-banned by client address rather than by the proxy's.
 
 POP3 is not exposed: the `pop3s` listener Stalwart creates by default is deleted at bootstrap.
 
@@ -99,13 +99,13 @@ POP3 is not exposed: the `pop3s` listener Stalwart creates by default is deleted
 Install raises two critical tasks and starts nothing until both are done: `setup` (email domain and hostname) and `set-admin-password`. Once `store.json` holds all three values and `etc/config.json` does not exist, an init handler bootstraps Stalwart in two temporary runs of the image, each torn down when its step succeeds:
 
 1. **Bootstrap mode.** Stalwart starts without a config file, which puts it in its bootstrap mode on port 8080 with the recovery admin pinned. The package posts `x:Bootstrap/set` with the hostname, the domain, RocksDB under `/var/lib/stalwart`, the internal directory, a console (stdout) tracer, manual DNS management, DKIM key generation on and ACME off. Stalwart writes `config.json`, creates the domain, its DKIM keys and a permanent `admin@<domain>` account whose generated password the package discards — the recovery admin is the credential the package owns.
-2. **First normal start.** Stalwart starts normally — this is the run in which it provisions its default listeners, DKIM keys and the rest of its configuration. The package sets `Http.useXForwarded`, pins the WebUI's `unpackDirectory` to `/var/lib/stalwart/webui`, deletes the `pop3s` listener, creates a Let's Encrypt `AcmeProvider` using the `Http01` challenge with `postmaster@<domain>` as contact, and switches the domain's certificate management to that provider with the hostname's label as the only subject alternative name.
+2. **First normal start.** Stalwart starts normally — this is the run in which it provisions its default listeners, DKIM keys and the rest of its configuration. The package sets `Http.clientIpSource` to `xForwardedFor` with one trusted proxy hop, pins the WebUI's `unpackDirectory` to `/var/lib/stalwart/webui`, deletes the `pop3s` listener, creates a Let's Encrypt `AcmeProvider` using the `Http01` challenge with `postmaster@<domain>` as contact, and switches the domain's certificate management to that provider with the hostname's label as the only subject alternative name.
 
 The whole sequence takes well under a minute and reports progress as "Configuring Stalwart". If it fails it retries until it succeeds or a five-minute timeout expires; the log names the JMAP method and error.
 
 Stalwart's setup wizard is therefore never shown. On first start of the real daemon Stalwart downloads the web console bundle from GitHub releases and the ASN/GeoIP tables it uses for sender reputation; without outbound HTTPS the console paths return 404 until a download succeeds, and the mail server still runs.
 
-The Let's Encrypt certificate for the mail ports is obtained by Stalwart, not StartOS: the ACME HTTP-01 challenge arrives on port 80 of the public address, is redirected to 443 by StartTunnel or StartOS, and is proxied to Stalwart's HTTP listener like any other request for that domain. That only works once the hostname has been added as a public domain on the `admin` interface and resolves in DNS; until then Stalwart serves a self-signed certificate. Stalwart does not reschedule issuance on its own: a renewal task claimed by an instance that was killed stays locked for an hour, and one that has exhausted its retries stays failed. So every start runs an `acme` oneshot after the daemon is healthy which, when no unexpired certificate covers the hostname and the domain is still on automatic management, destroys any existing renewal task and creates a new one due immediately. A restart is therefore the way to retry issuance once DNS and the public domain are in place. Once a certificate exists, Stalwart's own renewal schedule takes over and the oneshot does nothing.
+The Let's Encrypt certificate for the mail ports is obtained by Stalwart, not StartOS: the ACME HTTP-01 challenge arrives on port 80 of the public address, is redirected to 443 by StartTunnel or StartOS, and is proxied to Stalwart's HTTP listener like any other request for that domain. That only works once the hostname has been added as a public domain on the `admin` interface and resolves in DNS; until then Stalwart serves a self-signed certificate. Stalwart retries transient issuance failures automatically. Every start also runs an `acme` oneshot after the daemon is healthy which, when no unexpired certificate covers the hostname and the domain is still on automatic management, creates an `AcmeRenewal` singleton due immediately. Upstream replaces the previous singleton; explicit destruction of an automatic domain's renewal task is forbidden. A restart therefore requests an immediate retry once DNS and the public domain are in place. Once a certificate exists, Stalwart's own renewal schedule takes over and the oneshot does nothing.
 
 ## Actions
 
@@ -128,13 +128,13 @@ No task is raised on another service.
 
 One check, on the daemon; the `acme` oneshot that follows it is not a health check and reports nothing.
 
-- **`stalwart`** ("Mail Server") — `GET http://127.0.0.1:8080/healthz/live` with `X-Forwarded-For` set, the liveness probe upstream's image also uses. Ten-second grace period. Failing after the grace period means the process is not serving HTTP at all: the usual causes are a datastore it cannot open (ownership on `/var/lib/stalwart`, a RocksDB `LOCK` left by an unclean stop) or a listener it cannot bind, both of which the log states in its first lines. A green check says nothing about mail flow; the console's Telemetry and queue pages do.
+- **`stalwart`** ("Mail Server") — `GET http://127.0.0.1:8080/healthz/live` without forwarding headers. Loopback connections fall back to their socket address; Stalwart rejects a claimed loopback address in `X-Forwarded-For`. Ten-second grace period. Failing after the grace period means the process is not serving HTTP at all: the usual causes are a datastore it cannot open (ownership on `/var/lib/stalwart`, a RocksDB `LOCK` left by an unclean stop) or a listener it cannot bind, both of which the log states in its first lines. A green check says nothing about mail flow; the console's Telemetry and queue pages do.
 
 ## Backups and Restore
 
-The `main` volume is copied wholesale (`Backups.ofVolumes`). StartOS stops the service first, so the RocksDB files are captured at rest and consistent; `store.json` travels with them, so a restored instance has its hostname, domain and admin password and needs no re-setup.
+The `main` volume is backed up. StartOS stops the service first, so the RocksDB files are captured at rest and consistent; `store.json` travels with them, so a restored instance has its hostname, domain and admin password and needs no re-setup.
 
-Nothing is excluded. The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
+The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
 
 A restored instance starts with the same DKIM keys, ACME account and certificate, so no DNS change is needed. What does not come back is StartOS host state: the public domain on the `admin` interface, the enabled public addresses on the mail bindings and the outbound gateway are gone after a restore and have to be re-added, and StartTunnel forgets any manual published port that pointed at one of the withdrawn mappings. If the restore lands on a different public IP, the `A` and PTR records are the only DNS to update. Restoring is only possible while the package is not installed; StartOS refuses to restore over an existing install.
 
