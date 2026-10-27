@@ -24,7 +24,6 @@
 - [Actions](#actions)
 - [Tasks](#tasks)
 - [Health Checks](#health-checks)
-- [Upgrading from 0.16](#upgrading-from-016)
 - [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
@@ -33,7 +32,7 @@
 
 ## Image and Container Runtime
 
-The package runs upstream's unmodified Docker image on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system. A second image, upstream's `stalwartlabs/stalwart-migrate`, runs only during the update from 0.16 (see [Upgrading from 0.16](#upgrading-from-016)); `migrate.Dockerfile` rebuilds it unchanged because `docker save --platform` rejects its published index.
+The package runs upstream's unmodified Docker image on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
 
 Two subcontainers run from that image on every start:
 
@@ -56,7 +55,6 @@ One volume, `main`, holds everything Stalwart persists plus the package's own st
 | `data/`        | `/var/lib/stalwart` | The RocksDB datastore — mail, calendars, contacts, files, spam model, and every server setting object |
 | `data/webui/`  | (inside the above)  | The unpacked web console bundle, so restarts do not re-download it                                    |
 | `store.json`   | not mounted         | StartOS-side state: hostname, email domain, admin password                                            |
-| `v0.16/`       | not mounted         | On an install updated from 0.16 only: the old datastore and migration state, kept out of backups      |
 
 Everything Stalwart configures after bootstrap — listeners, domains, DKIM keys, ACME state, accounts, spam rules — is a record inside the RocksDB datastore, not a file. There is no configuration file to edit by hand.
 
@@ -132,25 +130,11 @@ One check, on the daemon; the `acme` oneshot that follows it is not a health che
 
 - **`stalwart`** ("Mail Server") — `GET http://127.0.0.1:8080/healthz/live` without forwarding headers. Loopback connections fall back to their socket address; Stalwart rejects a claimed loopback address in `X-Forwarded-For`. Ten-second grace period. Failing after the grace period means the process is not serving HTTP at all: the usual causes are a datastore it cannot open (ownership on `/var/lib/stalwart`, a RocksDB `LOCK` left by an unclean stop) or a listener it cannot bind, both of which the log states in its first lines. A green check says nothing about mail flow; the console's Telemetry and queue pages do.
 
-## Upgrading from 0.16
-
-Stalwart 1.0 cannot open a 0.16 datastore, so the `1.0.0:0` migration copies it with upstream's [stalwart-migrate](https://github.com/stalwartlabs/stalwart-migrate). The tool reads only 0.16.27 stores: the version graph's floor is `0.16.27:0` (`up: IMPOSSIBLE`), so StartOS offers an older 0.16 install 0.16.27:1 first and refuses a direct jump.
-
-With the service stopped, the migration runs the `migrate` image against the `main` volume:
-
-1. `stalwart-migrate prepare --non-interactive` with an `answers.toml` the package writes. It answers every question `prepare` asks of a store this package bootstrapped: every data category, `X-Forwarded-For` with one trusted hop, the recommended policy for changed defaults, accepting v1's OAuth client registration, and granting the new permissions.
-2. `stalwart-migrate run --final --yes`, which copies everything into an empty `data-v1/`, finalizes it and verifies a sample of accounts. The source is opened read-only.
-3. The old store moves to `v0.16/` (`data/`, its `config.json`, and the tool's state in `migrate/`, including `final-report.txt`), `data-v1/` becomes `data/`, and `etc/config.json` is rewritten for the new store.
-
-A failure at any step fails the update and StartOS rolls it back with the 0.16 store untouched. A retry starts from an empty target. A store whose settings raise a question the shipped answers do not cover, such as an OpenID Connect directory or an AI model added in the console, fails at `prepare`, which logs its summary.
-
-The migration needs free space for a second copy of the datastore and runs for as long as the copy takes, plus a 30-second check that 0.16 is stopped. Mail clients keep their state (IMAP UIDs and UIDVALIDITY are preserved). OAuth clients sign in again; v1 also rejects arbitrary, unregistered OAuth client IDs. DAV clients fetch their data once more, and search results are incomplete until v1 rebuilds the index.
-
 ## Backups and Restore
 
-The `main` volume is copied (`Backups.withOptions(...).addVolume('main')`). StartOS stops the service first, so the RocksDB files are captured at rest and consistent; `store.json` travels with them, so a restored instance has its hostname, domain and admin password and needs no re-setup.
+The `main` volume is backed up. StartOS stops the service first, so the RocksDB files are captured at rest and consistent; `store.json` travels with them, so a restored instance has its hostname, domain and admin password and needs no re-setup.
 
-Only `v0.16/` is excluded. The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
+The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
 
 A restored instance starts with the same DKIM keys, ACME account and certificate, so no DNS change is needed. What does not come back is StartOS host state: the public domain on the `admin` interface, the enabled public addresses on the mail bindings and the outbound gateway are gone after a restore and have to be re-added, and StartTunnel forgets any manual published port that pointed at one of the withdrawn mappings. If the restore lands on a different public IP, the `A` and PTR records are the only DNS to update. Restoring is only possible while the package is not installed; StartOS refuses to restore over an existing install.
 
@@ -177,7 +161,6 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 ```yaml
 package_id: stalwart
 image: stalwartlabs/stalwart
-migration_image: stalwartlabs/stalwart-migrate
 architectures: [x86_64, aarch64]
 subcontainers: [stalwart-chown, stalwart-sub]
 volumes:
