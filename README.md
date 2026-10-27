@@ -144,7 +144,7 @@ With the service stopped, the migration runs the `migrate` image against the `ma
 
 A failure at any step fails the update and StartOS rolls it back with the 0.16 store untouched. A retry starts from an empty target. A store whose settings raise a question the shipped answers do not cover, such as an OpenID Connect directory or an AI model added in the console, fails at `prepare`, which logs its summary.
 
-The migration needs free space for a second copy of the datastore and runs for as long as the copy takes, plus a 30-second check that 0.16 is stopped. Mail clients keep their state (IMAP UIDs and UIDVALIDITY are preserved). OAuth clients sign in again, DAV clients fetch their data once more, and search results are incomplete until v1 rebuilds the index.
+The migration needs free space for a second copy of the datastore and runs for as long as the copy takes, plus a 30-second check that 0.16 is stopped. Mail clients keep their state (IMAP UIDs and UIDVALIDITY are preserved). OAuth clients sign in again; v1 also rejects arbitrary, unregistered OAuth client IDs. DAV clients fetch their data once more, and search results are incomplete until v1 rebuilds the index.
 
 ## Backups and Restore
 
