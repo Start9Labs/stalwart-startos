@@ -40,4 +40,4 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **Keep every mail port a plain DNAT binding (`secure: { ssl: false }`); don't move one to `addSsl` or passthrough (`ssl: true`)** — termination makes every mail client look like the proxy to Stalwart's rate limiting and auto-ban, and passthrough's SNI listener refuses names not enabled on each mail port.
 - **Change a published port (2525, 10465, 10993, 14190) only together with the table in `instructions.md`** — the user maps the standard ports to them once on their gateway.
 - **Keep the second bootstrap run a normal-mode start, not recovery mode** — only a normal start provisions the default listeners, including the `pop3s` one bootstrap deletes.
-- **Don't drop the `acme` oneshot in `main` or gate it on install** — Stalwart never reschedules a locked or failed renewal itself, so the oneshot is what makes a restart retry issuance.
+- **Keep the `acme` restart hook as singleton creation, not destroy-and-create** — upstream forbids destroying an automatic domain's renewal task.

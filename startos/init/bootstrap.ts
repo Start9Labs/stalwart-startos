@@ -60,7 +60,7 @@ export const bootstrap = sdk.setupOnInit(async (effects, _kind, progress) => {
         {
           update: {
             singleton: {
-              serverHostname: hostname,
+              defaultHostname: hostname,
               defaultDomain: domain,
               requestTlsCertificate: false,
               generateDkimKeys: true,
@@ -107,7 +107,15 @@ async function configure(
     hostname === domain ? domain : hostname.slice(0, -domain.length - 1)
 
   await jmap(adminPassword, [
-    ['x:Http/set', { update: { singleton: { useXForwarded: true } } }, 'c1'],
+    [
+      'x:Http/set',
+      {
+        update: {
+          singleton: { clientIpSource: 'xForwardedFor', forwardedHops: 1 },
+        },
+      },
+      'c1',
+    ],
     [
       'x:Application/set',
       { update: { [webui.id]: { unpackDirectory: webuiDir } } },

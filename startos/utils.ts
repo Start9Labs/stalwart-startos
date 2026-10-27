@@ -45,11 +45,9 @@ export const chownCommand = [
   `mkdir -p ${webuiDir} && chown -R ${stalwartUid}:${stalwartUid} ${etcDir} ${dataDir}`,
 ] as const satisfies [string, ...string[]]
 
-// Upstream's own HEALTHCHECK sends X-Forwarded-For; without it every probe logs a warning.
 export async function checkLive(): Promise<healthFns.HealthCheckResult> {
   try {
     const res = await fetch(`http://127.0.0.1:${httpPort}/healthz/live`, {
-      headers: { 'X-Forwarded-For': '127.0.0.1' },
       signal: AbortSignal.timeout(5_000),
     })
     if (res.ok) return { result: 'success', message: i18n('Stalwart is ready') }
@@ -68,7 +66,6 @@ export async function jmap(
     headers: {
       Authorization: `Basic ${Buffer.from(`${recoveryAdminUser}:${adminPassword}`).toString('base64')}`,
       'Content-Type': 'application/json',
-      'X-Forwarded-For': '127.0.0.1',
     },
     body: JSON.stringify({
       using: ['urn:ietf:params:jmap:core', 'urn:stalwart:jmap'],
@@ -119,10 +116,6 @@ type Domain = {
   name: string
   certificateManagement: { '@type': string }
 }
-type Task = { id: string; '@type': string; domainId?: string }
-
-// A renewal task claimed by an instance that was killed stays locked for an hour, and a
-// task that has exhausted its retries is never rescheduled by Stalwart itself.
 export async function armAcme(
   adminPassword: string,
   hostname: string,
@@ -149,14 +142,10 @@ export async function armAcme(
   ).find((d) => d.name === domain)
   if (mailDomain?.certificateManagement['@type'] !== 'Automatic') return
 
-  const stale = (await jmapQuery<Task>(adminPassword, 'Task'))
-    .filter((t) => t['@type'] === 'AcmeRenewal' && t.domainId === mailDomain.id)
-    .map((t) => t.id)
   await jmap(adminPassword, [
     [
       'x:Task/set',
       {
-        destroy: stale,
         create: {
           renew: {
             '@type': 'AcmeRenewal',
