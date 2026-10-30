@@ -151,8 +151,7 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 7. The web console is fetched from GitHub at first start rather than shipped in the image, so the console (not the mail server) depends on outbound HTTPS once.
 8. Enterprise-licensed features (LLM spam classification, masked email, multi-tenancy, some telemetry views) are unavailable, as in the community edition upstream.
 9. DANE is disabled for outbound delivery: the StartOS resolver forwards queries without DNSSEC validation, and Stalwart turns DANE off rather than defer mail (`registry.build-warning` at every start). The TLSA records in the zone file only help senders if the user's own zone is DNSSEC-signed.
-10. Setting the service's outbound gateway (`start-cli package set-outbound-gateway`, or the **Set Outbound Gateway** action) has no effect while a system-wide default gateway is pinned under System › Gateways › Outbound Traffic: the catch-all rule for the pinned default precedes the per-service rule. Pin the system default to the gateway the mail ports are published on, or leave it on Auto.
-11. Withdrawing a public address on a mail binding — which a reinstall, an update and a restore all do — makes StartOS release its PCP mapping, and StartTunnel then drops any _manual_ published port whose target is the same device port. The user's `25 → 2525` style rules have to be re-added afterwards.
+10. Withdrawing a public address on a mail binding — which a reinstall, an update and a restore all do — makes StartOS release its PCP mapping, and StartTunnel then drops any _manual_ published port whose target is the same device port. The user's `25 → 2525` style rules have to be re-added afterwards.
 
 ---
 
