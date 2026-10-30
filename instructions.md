@@ -8,9 +8,9 @@ Running a mail server that the rest of the internet will talk to needs three thi
 - [Setting up DNS](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/install/dns.md) — what every DNS record a mail server publishes is for.
 - [Securing your server](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/install/security.md) — which ports to expose, administrator roles, access control.
 - [Management](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/management) — the web console, the account manager, tasks, troubleshooting and the command-line client.
-- [Accounts and groups](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/auth/principals) — creating user accounts, aliases, groups and quotas.
+- [Accounts and groups](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/auth/accounts) — creating user accounts, aliases, groups and quotas.
 - [Email settings](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/email) — mailing lists, IMAP and JMAP settings, rate limits and mailbox maintenance.
-- [FAQ](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/faq.md) — frequently asked questions.
+- [FAQ](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/faq) — frequently asked questions.
 
 ## What you get on StartOS
 
