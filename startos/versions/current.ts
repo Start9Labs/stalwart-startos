@@ -32,7 +32,7 @@ export const current = VersionInfo.of({
 **Po aktualizacji sprawdź ustawienia szyfrowania**
 
 - Konta z włączonym szyfrowaniem przechowywanych wiadomości zostają przełączone na Disabled. Ponownie wybierz klucz publiczny każdego konta w jego ustawieniach szyfrowania, aby je przywrócić; do tego czasu nowe wiadomości są zapisywane bez szyfrowania. Istniejące zaszyfrowane wiadomości i zarejestrowane klucze publiczne pozostają bez zmian.
-- Ustawienie serwerowe Email.encryptAtRest zastępuje Encryption.atRestEnable, domyślnie włączone. Jeśli wcześniej je wyłączono, wyłącz je ponownie. Email.encryptOnAppend przeniesiono do ustawienia encryptOnAppend każdego konta.
+- Ustawienie serwerowe Email.encryptAtRest zostaje zastąpione przez Encryption.atRestEnable, domyślnie włączone. Jeśli wcześniej je wyłączono, wyłącz je ponownie. Email.encryptOnAppend przeniesiono do ustawienia encryptOnAppend każdego konta.
 
 [Pełny dziennik zmian](https://github.com/stalwartlabs/stalwart/blob/v1.0.2/CHANGELOG.md#102---2026-11-02)`,
     fr_FR: `Stalwart mis à jour vers 1.0.2 : prise en charge étendue d’OpenPGP et de S/MIME, passerelle de chiffrement sortant et correctifs pour les signatures DKIM, l’accès IMAP d’Outlook, JMAP et le téléchargement de la console web. Les mots de passe d’application et les clés API ne permettent plus la connexion interactive ; utilisez le mot de passe du compte et l’authentification à deux facteurs.
