@@ -15,7 +15,7 @@ Running a mail server that the rest of the internet will talk to needs three thi
 ## What you get on StartOS
 
 - **Admin Console** — the Stalwart web console, where you manage domains, accounts and every server setting. The same address serves JMAP, CalDAV, CardDAV, WebDAV and mail client autoconfiguration.
-- **Account Manager** — a self-service page where each user changes their password and manages app passwords and two-factor authentication.
+- **Account Manager** — a self-service page where each user changes their password and manages app passwords, passkeys and two-factor authentication.
 - **SMTP** (port 25), **SMTP Submission** (port 465), **IMAP** (port 993) and **ManageSieve** (port 4190) — the mail protocols, served by Stalwart with its own TLS certificate.
 - **Actions** to set the admin password and to list the DNS records for your domains.
 
@@ -69,6 +69,8 @@ Sign in with the admin credentials. Domains are managed under **Management › D
 ### Account Manager
 
 Give `https://mail.example.com/account/` (using your setup hostname) to your users. They sign in with their own email address and password to change the password, create app passwords for mail clients, and enable two-factor authentication.
+
+Users in the internal directory can manage passkeys under **Account > Credentials** and use them for passwordless sign-in. Keep using HTTPS on your setup hostname. Passkeys are not a second factor: signing in with one does not ask for a TOTP code.
 
 ### Actions
 
