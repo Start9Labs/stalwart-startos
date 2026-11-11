@@ -1,3 +1,5 @@
+import { T } from '@start9labs/start-sdk'
+import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
@@ -13,8 +15,12 @@ import {
 } from './utils'
 
 export const hostId = 'mail'
+const adminInterfaceId = 'admin'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
+  const hostname = await storeJson.read((s) => s.hostname).const(effects)
+  const preferredLauncherAddress = hostname ? `https://${hostname}` : null
+
   const mail = sdk.MultiHost.of(effects, hostId)
 
   const web = await mail.bindPort(httpPort, {
@@ -23,7 +29,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   })
   const admin = sdk.createInterface(effects, {
     name: i18n('Admin Console'),
-    id: 'admin',
+    id: adminInterfaceId,
     description: i18n(
       'Web console for managing domains, accounts and server settings. Also serves JMAP, CalDAV, CardDAV, WebDAV and mail client autoconfiguration.',
     ),
@@ -33,6 +39,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     username: null,
     path: '/admin/',
     query: {},
+    preferredLauncherAddress,
   })
   const account = sdk.createInterface(effects, {
     name: i18n('Account Manager'),
@@ -46,6 +53,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     username: null,
     path: '/account/',
     query: {},
+    preferredLauncherAddress,
   })
 
   const smtp = await mail.bindPort(smtpPort, {
@@ -136,3 +144,21 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     await sieve.export([sieveInterface]),
   ]
 })
+
+export const adminPublicDomains = (effects: T.Effects) =>
+  sdk.host.getOwn(effects, hostId, (host) => {
+    const admin =
+      host &&
+      Object.values(host.bindings)
+        .flatMap((b) => Object.values(b.interfaces))
+        .find((i) => i.id === adminInterfaceId)
+    return admin
+      ? [
+          ...new Set(
+            admin.addressInfo
+              .filter({ kind: 'domain', visibility: 'public' })
+              .hostnames.map((h) => h.hostname),
+          ),
+        ]
+      : []
+  })

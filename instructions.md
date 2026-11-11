@@ -23,13 +23,15 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
 ## Getting set up
 
-1. Run **Set Up Mail Server** and enter your email domain (`example.com`) and the hostname of this server (`mail.example.com`). The hostname must be the domain itself or a name under it.
+1. Add your mail server hostname as a public domain. Under **Services > Stalwart > Interfaces > Admin Console**, click **Add Domain**, choose **Public Domain**, and add `mail.example.com` with Let's Encrypt. The web console accepts sign-in only at this address, and Stalwart obtains the Let's Encrypt certificate for the mail ports through it, so keep it enabled. Add `autoconfig.example.com` and `mta-sts.example.com` the same way if you want mail clients to configure themselves and other servers to enforce TLS when delivering to you.
 
-2. Run **Set Admin Password**. Copy the username and password it shows — the password is not shown again, but you can run the action again for a new one.
+2. Run **Set Up Mail Server**. Choose `mail.example.com` as the hostname — the list offers the public domains you added in step 1 — and enter your email domain (`example.com`). The hostname must be the email domain itself or a name under it.
 
-3. Start Stalwart. The first start takes a minute while it creates the domain, its DKIM keys and the database.
+3. Run **Set Admin Password**. Copy the username and password it shows — the password is not shown again, but you can run the action again for a new one.
 
-4. Publish the mail ports on your public address. On the **Interfaces** tab, enable the public IPv4 address on the **SMTP**, **SMTP Submission** and **IMAP** interfaces (and **ManageSieve** if you use server-side filters). StartOS publishes each one on the port shown in its address — `2525`, `10465`, `10993` and `14190`. Mail expects the standard ports, so add a port forward on your gateway from each standard port to the published one:
+4. Start Stalwart. The first start takes a minute while it creates the domain, its DKIM keys and the database.
+
+5. Publish the mail ports on your public address. On the **Interfaces** tab, enable the public IPv4 address on the **SMTP**, **SMTP Submission** and **IMAP** interfaces (and **ManageSieve** if you use server-side filters). StartOS publishes each one on the port shown in its address — `2525`, `10465`, `10993` and `14190`. Mail expects the standard ports, so add a port forward on your gateway from each standard port to the published one:
 
    | Standard port | Forward to |
    | ------------- | ---------- |
@@ -40,13 +42,11 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
    On StartTunnel these are **Published Ports** with the external port on the left and the internal port on the right. On a home router they are ordinary port-forwarding rules to your server's LAN IP. StartTunnel drops these rules whenever StartOS withdraws the automatic ones — after an update, a reinstall or a restore — so check they are still there if mail stops arriving.
 
-5. Send outgoing mail from the same public address. Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
+6. Send outgoing mail from the same public address. Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
 
-6. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 4. If your gateway is a StartTunnel VPS, also set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
+7. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5. If your gateway is a StartTunnel VPS, also set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
 
-7. Add your hostname as a public domain. On the **Admin Console** interface, add `mail.example.com` as a public domain with Let's Encrypt. This makes the console reachable at `https://mail.example.com/admin/`, and it is also how Stalwart obtains the Let's Encrypt certificate it presents on the mail ports: the certificate is requested through this address, so keep it enabled. Add `autoconfig.example.com` and `mta-sts.example.com` the same way if you want mail clients to configure themselves and other servers to enforce TLS when delivering to you.
-
-8. Open `https://mail.example.com/admin/` using the hostname you entered at setup and sign in with the username and password from step 2. Console and Account Manager login require HTTPS on that hostname; an arbitrary StartOS interface address is not supported for login.
+8. Open the **Admin Console** with **Open UI**, which takes you to `https://mail.example.com/admin/`, and sign in with the username and password from step 3. Signing in from the server's `.local`, IP or `.onion` address fails with "Client metadata documents are disabled".
 
 9. Create your first user in the Admin Console under **Management › Directory › Accounts**. The account's email address is its login for IMAP and SMTP.
 
@@ -58,7 +58,7 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
     | Outgoing (SMTP) | `mail.example.com`, port 465, SSL |
     | Username        | the full email address            |
 
-Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record and the public domain from step 7 to be in place; if it has not happened a few minutes after both are, restart Stalwart.
+Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record and the public domain from step 1 to be in place; if it has not happened a few minutes after both are, restart Stalwart.
 
 ## Using Stalwart
 

@@ -88,7 +88,7 @@ All bindings share one host (`mail`). The web listener is proxied by StartOS; ev
 
 StartOS does not let a package claim a host port below 1025 and publishes a raw port on the same number it holds on the box, so the standard mail ports cannot be published by the package itself. The published numbers above are fixed so that a user can map `25 → 2525`, `465 → 10465`, `993 → 10993` and `4190 → 14190` once on their gateway; if one of them is already taken on the box StartOS assigns a random port instead and the Interfaces tab shows the real number.
 
-Stalwart's `defaultHostname` is the hostname chosen at setup, so its `.well-known` discovery documents, SRV records and autoconfig point at `https://<hostname>` and the standard ports. The web console and Account Manager require HTTPS on that hostname: first-party OAuth clients are restricted to trusted HTTP service hostnames. Arbitrary StartOS addresses are not supported for console login. Publish the setup hostname on the `admin` interface before logging in, then use `https://<hostname>/admin/` or `/account/`. `STALWART_PUBLIC_URL` remains unset; no alternate proxy address is imposed on discovery. Passkeys use that hostname as their relying party ID, so an alternate StartOS interface address cannot be used for passkey sign-in either.
+Stalwart's `defaultHostname` is the hostname chosen at setup, so its `.well-known` discovery documents, SRV records and autoconfig point at `https://<hostname>` and the standard ports. The web console and Account Manager sign in only over HTTPS on that hostname: Stalwart accepts its own console as an OAuth client only from its trusted hosts, and every other origin falls through to client metadata documents, which are disabled ("Client metadata documents are disabled"). Setup therefore offers only the public domains on the `admin` interface as the hostname, and both `ui` interfaces nominate `https://<hostname>` as their `preferredLauncherAddress`, so Open UI lands on `https://<hostname>/admin/` and `/account/`. `STALWART_PUBLIC_URL` remains unset; no alternate proxy address is imposed on discovery. Passkeys use that hostname as their relying party ID, so an alternate StartOS interface address cannot be used for passkey sign-in either.
 
 Stalwart reads `X-Forwarded-For` from one trusted proxy hop on the HTTP listener (`clientIpSource`), which StartOS sets on the proxied binding, so web logins are rate-limited and auto-banned by client address rather than by the proxy's.
 
@@ -96,7 +96,7 @@ POP3 is not exposed: the `pop3s` listener Stalwart creates by default is deleted
 
 ## Installation and First-Run Flow
 
-Install raises two critical tasks and starts nothing until both are done: `setup` (email domain and hostname) and `set-admin-password`. Once `store.json` holds all three values and `etc/config.json` does not exist, an init handler bootstraps Stalwart in two temporary runs of the image, each torn down when its step succeeds:
+Install raises two critical tasks and starts nothing until both are done: `setup` (email domain, and a hostname chosen from the public domains on the `admin` interface) and `set-admin-password`. Once `store.json` holds all three values and `etc/config.json` does not exist, an init handler bootstraps Stalwart in two temporary runs of the image, each torn down when its step succeeds:
 
 1. **Bootstrap mode.** Stalwart starts without a config file, which puts it in its bootstrap mode on port 8080 with the recovery admin pinned. The package posts `x:Bootstrap/set` with the hostname, the domain, RocksDB under `/var/lib/stalwart`, the internal directory, a console (stdout) tracer, manual DNS management, DKIM key generation on and ACME off. Stalwart writes `config.json`, creates the domain, its DKIM keys and a permanent `admin@<domain>` account whose generated password the package discards — the recovery admin is the credential the package owns.
 2. **First normal start.** Stalwart starts normally — this is the run in which it provisions its default listeners, DKIM keys and the rest of its configuration. The package sets `Http.clientIpSource` to `xForwardedFor` with one trusted proxy hop, pins the WebUI's `unpackDirectory` to `/var/lib/stalwart/webui`, deletes the `pop3s` listener, creates a Let's Encrypt `AcmeProvider` using the `Http01` challenge with `postmaster@<domain>` as contact, and switches the domain's certificate management to that provider with the hostname's label as the only subject alternative name.
@@ -111,7 +111,7 @@ The Let's Encrypt certificate for the mail ports is obtained by Stalwart, not St
 
 Three actions, all driven from `store.json` or the running server's JMAP API as the recovery admin.
 
-- **`setup`** (hidden — not user-facing) — Satisfies the install task. Validates that the hostname equals the domain or ends in `.<domain>`, lower-cases both and writes them to `store.json`. Runs only while stopped and only before bootstrap has happened; afterwards it is unreachable, and the values it wrote are only read again by the bootstrap. Changing the hostname or domain later is done in Stalwart's console (`SystemSettings.defaultHostname`, the `Domain` record).
+- **`setup`** (hidden — reached only through its task) — Offers the public domains on the `admin` interface as the hostname (the field is disabled until there is one) and takes the email domain as text. Validates that the hostname equals the domain or ends in `.<domain>` and writes both to `store.json`. Runs only while stopped. After bootstrap it accepts only the stored values, which clears its task, and refuses any change; changing the hostname or domain later is done in Stalwart's console (`SystemSettings.defaultHostname`, the `Domain` record).
 - **`set-admin-password`** — Run when the admin password is lost or needs rotating. Generates a 32-character password, writes it to `store.json`, returns `admin` and the password once. Costs a restart: the daemon reads the value from its environment at launch, so the action is stopped-only and the new password is live on the next start. Safe to repeat; every run invalidates the previous password, and once a password exists the action asks for confirmation before replacing it. It does not touch the permanent `admin@<domain>` account Stalwart created at bootstrap.
 - **`show-dns-records`** — Run after setup, after adding a domain in the console, or after a DKIM rotation. Takes no input: it reads the SMTP binding's addresses and emits one `A`/`AAAA` block per gateway whose public address is enabled there (Stalwart's own zone file never contains the address record), then one zone file per `Domain` read over JMAP, each copyable and downloadable as `<domain>.zone`. With no public address enabled it says so and returns the zone files alone. Gateways are labelled by id (`wg0`, `eno0`); the friendly name is not available to packages. Read-only, instant, running-only; changes nothing.
 
@@ -119,7 +119,7 @@ Three actions, all driven from `store.json` or the running server's JMAP API as 
 
 Two critical tasks at install, one per setup value the bootstrap needs.
 
-- **`setup`** — Raised by init whenever `store.json` lacks `hostname` or `domain`. Critical: the service cannot start. Cleared by running `setup`. Cannot return after bootstrap, because the action's writes are never undone.
+- **`setup`** — Raised by init as critical whenever `store.json` lacks `hostname` or `domain`: the service cannot start. Raised as important whenever the stored hostname is not a public domain on the `admin` interface, since console sign-in and ACME issuance both depend on it; the mail server keeps running. Cleared once the hostname is set and is one of those domains, whether by running `setup` or by adding the domain back.
 - **`set-admin-password`** — Raised by init whenever `store.json` lacks `adminPassword`. Critical. Cleared by running `set-admin-password`. Cannot return.
 
 No task is raised on another service.
@@ -183,6 +183,7 @@ actions:
   - show-dns-records
 tasks:
   - { action: setup, severity: critical }
+  - { action: setup, severity: important }
   - { action: set-admin-password, severity: critical }
 health_checks:
   - stalwart

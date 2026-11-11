@@ -35,6 +35,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 ## This repo
 
 - **Don't replace `STALWART_RECOVERY_ADMIN` with the `admin@<domain>` account bootstrap creates, and don't add a "show password" action** — it is the one credential that bypasses the account directory, so `set-admin-password` can always get the user back in.
+- **Keep `setup`'s hostname a choice among the `admin` interface's public domains, never free text** — Stalwart lets the console sign in only at that hostname, so a hostname that StartOS does not route to Stalwart leaves the console unusable.
 - **Gate bootstrap on `etc/config.json` being absent, never on `kind === 'install'`** — the hostname, domain and password arrive from actions after install.
 - **Don't set `STALWART_PUBLIC_URL` to make the console log in** — it would pin JMAP/OIDC discovery to one address for every mail client.
 - **Keep every mail port a plain DNAT binding (`secure: { ssl: false }`); don't move one to `addSsl` or passthrough (`ssl: true`)** — termination makes every mail client look like the proxy to Stalwart's rate limiting and auto-ban, and passthrough's SNI listener refuses names not enabled on each mail port.
