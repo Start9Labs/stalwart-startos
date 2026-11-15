@@ -42,9 +42,11 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
    On StartTunnel these are **Published Ports** with the external port on the left and the internal port on the right. On a home router they are ordinary port-forwarding rules to your server's LAN IP. StartTunnel 1.3.1 and later keep these rules when StartOS withdraws and re-requests its automatic mappings (after an update, a reinstall or a restore); on an older StartTunnel, update it first.
 
+   Port 80 of the same public address must reach your server too: Stalwart's Let's Encrypt certificate for the mail ports is verified over it. On StartTunnel, keep the HTTP redirect for that IP turned on under **Settings › HTTP Redirect** — it is on by default. On a home router, forward port 80 to your server as well.
+
 6. Send outgoing mail from the same public address. Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
 
-7. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5. If your gateway is a StartTunnel VPS, also set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
+7. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider, including the address records even if a wildcard record already resolves `mail.example.com`: once any record exists for that name, the wildcard stops answering for it. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5. If your gateway is a StartTunnel VPS, also set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
 
 8. Open the **Admin Console** with **Open UI**, which takes you to `https://mail.example.com/admin/`, and sign in with the username and password from step 3. Signing in from the server's `.local`, IP or `.onion` address fails with "Client metadata documents are disabled".
 
@@ -58,7 +60,7 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
     | Outgoing (SMTP) | `mail.example.com`, port 465, SSL |
     | Username        | the full email address            |
 
-Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record and the public domain from step 1 to be in place; if it has not happened a few minutes after both are, restart Stalwart.
+Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 1 and port 80 from step 5 to be in place; if it has not happened a few minutes after all three are, restart Stalwart.
 
 ## Using Stalwart
 
