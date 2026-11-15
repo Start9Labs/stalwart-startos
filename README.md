@@ -136,7 +136,7 @@ The `main` volume is backed up. StartOS stops the service first, so the RocksDB 
 
 The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
 
-A restored instance starts with the same DKIM keys, ACME account and certificate, so no DNS change is needed. What does not come back is StartOS host state: the public domain on the `admin` interface, the enabled public addresses on the mail bindings and the outbound gateway are gone after a restore and have to be re-added, and StartTunnel forgets any manual published port that pointed at one of the withdrawn mappings. If the restore lands on a different public IP, the `A` and PTR records are the only DNS to update. Restoring is only possible while the package is not installed; StartOS refuses to restore over an existing install.
+A restored instance starts with the same DKIM keys, ACME account and certificate, so no DNS change is needed. What does not come back is StartOS host state: the public domain on the `admin` interface, the enabled public addresses on the mail bindings and the outbound gateway are gone after a restore and have to be re-added. If the restore lands on a different public IP, the `A` and PTR records are the only DNS to update. Restoring is only possible while the package is not installed; StartOS refuses to restore over an existing install.
 
 ## Limitations and Differences
 
@@ -151,7 +151,6 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 7. The web console is fetched from GitHub at first start rather than shipped in the image, so the console (not the mail server) depends on outbound HTTPS once.
 8. Enterprise-licensed features (LLM spam classification, masked email, multi-tenancy, some telemetry views) are unavailable, as in the community edition upstream.
 9. DANE is disabled for outbound delivery: the StartOS resolver forwards queries without DNSSEC validation, and Stalwart turns DANE off rather than defer mail (`registry.build-warning` at every start). The TLSA records in the zone file only help senders if the user's own zone is DNSSEC-signed.
-10. Withdrawing a public address on a mail binding — which a reinstall, an update and a restore all do — makes StartOS release its PCP mapping, and StartTunnel then drops any _manual_ published port whose target is the same device port. The user's `25 → 2525` style rules have to be re-added afterwards.
 
 ---
 

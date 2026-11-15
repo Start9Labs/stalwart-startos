@@ -40,7 +40,7 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
    | 993           | 10993      |
    | 4190          | 14190      |
 
-   On StartTunnel these are **Published Ports** with the external port on the left and the internal port on the right. On a home router they are ordinary port-forwarding rules to your server's LAN IP. StartTunnel drops these rules whenever StartOS withdraws the automatic ones — after an update, a reinstall or a restore — so check they are still there if mail stops arriving.
+   On StartTunnel these are **Published Ports** with the external port on the left and the internal port on the right. On a home router they are ordinary port-forwarding rules to your server's LAN IP. StartTunnel 1.3.1 and later keep these rules when StartOS withdraws and re-requests its automatic mappings (after an update, a reinstall or a restore); on an older StartTunnel, update it first.
 
 6. Send outgoing mail from the same public address. Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
 
