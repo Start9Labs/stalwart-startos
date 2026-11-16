@@ -149,7 +149,7 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 5. Stalwart's setup wizard is bypassed. Storage backends (PostgreSQL, S3, …), external directories (LDAP, OIDC, SQL) and DNS-provider automation are not offered at setup; all remain available in the console afterwards.
 6. Hostname and email domain are set once from StartOS; later changes are made in the console and are not reflected in `store.json`, which only the bootstrap and `show-dns-records`' hostname reminder read.
 7. The web console is fetched from GitHub at first start rather than shipped in the image, so the console (not the mail server) depends on outbound HTTPS once.
-8. Enterprise-licensed features (LLM spam classification, masked email, multi-tenancy, some telemetry views) are unavailable, as in the community edition upstream.
+8. Enterprise-licensed features (LLM spam classification, multi-tenancy, some telemetry views) are unavailable, as in the community edition upstream.
 9. DANE is disabled for outbound delivery: the StartOS resolver forwards queries without DNSSEC validation, and Stalwart turns DANE off rather than defer mail (`registry.build-warning` at every start). The TLSA records in the zone file only help senders if the user's own zone is DNSSEC-signed.
 
 ---
