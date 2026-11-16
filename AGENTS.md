@@ -41,6 +41,6 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **Keep every mail port a plain DNAT binding (`secure: { ssl: false }`); don't move one to `addSsl` or passthrough (`ssl: true`)** — termination makes every mail client look like the proxy to Stalwart's rate limiting and auto-ban, and passthrough's SNI listener refuses names not enabled on each mail port.
 - **Change a published port (2525, 10465, 10993, 14190) only together with the table in `instructions.md`** — the user maps the standard ports to them once on their gateway.
 - **Keep the second bootstrap run a normal-mode start, not recovery mode** — only a normal start provisions the default listeners, including the `pop3s` one bootstrap deletes.
-- **Don't drop the `acme` oneshot in `main` or gate it on install** — Stalwart never reschedules a locked or failed renewal itself, so the oneshot is what makes a restart retry issuance.
+- **Don't drop the `acme` oneshot in `main` or gate it on install** — Stalwart backs its own retries off exponentially and never reschedules a locked or failed renewal, so the oneshot is what makes a restart retry issuance at once.
 - **Keep that oneshot creating the `AcmeRenewal` singleton, not destroying and recreating it** — upstream forbids destroying an automatic domain's renewal task.
 - **Don't drop or lower the `0.16.27:0` floor in `startos/versions/`** — `stalwart-migrate` reads only 0.16.27 stores, and the floor is what makes StartOS route older 0.16 installs through 0.16.27:1.

@@ -60,7 +60,7 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
     | Outgoing (SMTP) | `mail.example.com`, port 465, SSL |
     | Username        | the full email address            |
 
-Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 1 and port 80 from step 5 to be in place; if it has not happened a few minutes after all three are, restart Stalwart.
+Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 1 and port 80 from step 5 to be in place; after a failed attempt Let's Encrypt makes Stalwart wait about 12 minutes before the next one, and restarting does not shorten that wait. If there is still no certificate 15 minutes after all three are in place, restart Stalwart.
 
 ## Using Stalwart
 
