@@ -1,28 +1,48 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '1.1.0:1',
+  version: '1.1.1:0',
   releaseNotes: {
-    en_US: `Open UI now opens the web console and the account manager at your mail server hostname, the only address where Stalwart accepts sign-in. On a new installation, setup offers the public domains on the Admin Console interface as the hostname, so add your hostname there first. Requires StartOS 0.4.2 or later.
+    en_US: `Updated Stalwart to 1.1.1.
 
-- If your hostname is not a public domain on the Admin Console interface, a task asks you to add it. Sign-in and certificate renewal need it.
-- On existing installations, sign in to the Admin Console with the recovery administrator (admin) and add the missing sysPasskey* permissions to the default roles before using passkeys; see [default roles on upgraded servers](https://stalw.art/docs/auth/authorization/permissions#default-roles-on-upgraded-servers).`,
-    es_ES: `Abrir UI ahora abre la consola web y el gestor de cuenta en el nombre de host de tu servidor de correo, la única dirección donde Stalwart permite iniciar sesión. En una instalación nueva, la configuración ofrece como nombre de host los dominios públicos de la interfaz Consola de administración, así que añade allí tu nombre de host primero. Requiere StartOS 0.4.2 o posterior.
+- New: masked email addresses no longer require an Enterprise license.
+- Action required: if you manage DNS through Netcup, enter your Netcup CloudDNS API key in the new API key field of that DNS provider in the Admin Console. Only CloudDNS domains are supported.
+- Fixes for IMAP clients that could skip newly delivered messages, Sieve sub-address matching, calendar invitations and recurring events, and concurrent WebDAV uploads.
+- Security: hardened IMAP against memory exhaustion before login, and files shared over WebDAV can no longer run scripts in the browser.
 
-- Si tu nombre de host no es un dominio público de la interfaz Consola de administración, una tarea te pide añadirlo. El inicio de sesión y la renovación del certificado lo necesitan.
-- En instalaciones existentes, inicia sesión en la consola de administración con el administrador de recuperación (admin) y añade los permisos sysPasskey* que faltan a los roles predeterminados antes de usar claves de acceso; consulta [los roles predeterminados en servidores actualizados](https://stalw.art/docs/auth/authorization/permissions#default-roles-on-upgraded-servers).`,
-    de_DE: `UI öffnen öffnet die Webkonsole und die Kontoverwaltung jetzt unter dem Hostnamen deines Mailservers, der einzigen Adresse, an der Stalwart die Anmeldung erlaubt. Bei einer neuen Installation bietet die Einrichtung die öffentlichen Domains der Schnittstelle Administrationskonsole als Hostnamen an; füge deinen Hostnamen also zuerst dort hinzu. Erfordert StartOS 0.4.2 oder neuer.
+[Full release notes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
+    es_ES: `Stalwart actualizado a 1.1.1.
 
-- Ist dein Hostname keine öffentliche Domain der Schnittstelle Administrationskonsole, fordert dich eine Aufgabe auf, ihn hinzuzufügen. Anmeldung und Zertifikatserneuerung benötigen ihn.
-- Bei bestehenden Installationen mit dem Wiederherstellungsadministrator (admin) an der Admin-Konsole anmelden und vor der Passkey-Nutzung die fehlenden sysPasskey*-Berechtigungen zu den Standardrollen hinzufügen; siehe [Standardrollen auf aktualisierten Servern](https://stalw.art/docs/auth/authorization/permissions#default-roles-on-upgraded-servers).`,
-    pl_PL: `Otwórz UI otwiera teraz konsolę webową i menedżera konta pod nazwą hosta serwera poczty, jedynym adresem, pod którym Stalwart pozwala się zalogować. W nowej instalacji konfiguracja proponuje jako nazwę hosta domeny publiczne interfejsu Konsola administracyjna, więc najpierw dodaj tam swoją nazwę hosta. Wymaga StartOS 0.4.2 lub nowszego.
+- Nuevo: las direcciones de correo enmascaradas ya no requieren una licencia Enterprise.
+- Acción necesaria: si gestionas el DNS con Netcup, introduce tu clave de API de Netcup CloudDNS en el nuevo campo de clave de API de ese proveedor DNS en la consola de administración. Solo se admiten dominios CloudDNS.
+- Correcciones para clientes IMAP que podían omitir mensajes recién entregados, la coincidencia de subdirecciones en Sieve, invitaciones de calendario y eventos recurrentes, y subidas WebDAV simultáneas.
+- Seguridad: IMAP reforzado contra el agotamiento de memoria antes del inicio de sesión, y los archivos compartidos por WebDAV ya no pueden ejecutar scripts en el navegador.
 
-- Jeśli Twoja nazwa hosta nie jest domeną publiczną interfejsu Konsola administracyjna, zadanie poprosi o jej dodanie. Jest potrzebna do logowania i odnawiania certyfikatu.
-- W istniejących instalacjach zaloguj się do konsoli administracyjnej jako administrator odzyskiwania (admin) i dodaj brakujące uprawnienia sysPasskey* do ról domyślnych przed użyciem kluczy dostępu; zobacz [role domyślne na zaktualizowanych serwerach](https://stalw.art/docs/auth/authorization/permissions#default-roles-on-upgraded-servers).`,
-    fr_FR: `Ouvrir UI ouvre désormais la console web et le gestionnaire de compte sur le nom d'hôte de votre serveur de messagerie, la seule adresse où Stalwart accepte la connexion. Sur une nouvelle installation, la configuration propose comme nom d'hôte les domaines publics de l'interface Console d'administration ; ajoutez-y donc d'abord votre nom d'hôte. Nécessite StartOS 0.4.2 ou ultérieur.
+[Notas de la versión completas](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
+    de_DE: `Stalwart auf 1.1.1 aktualisiert.
 
-- Si votre nom d'hôte n'est pas un domaine public de l'interface Console d'administration, une tâche vous demande de l'ajouter. La connexion et le renouvellement du certificat en ont besoin.
-- Sur les installations existantes, connectez-vous à la console d’administration avec l’administrateur de récupération (admin) et ajoutez les permissions sysPasskey* manquantes aux rôles par défaut avant d’utiliser les clés d’accès ; consultez [les rôles par défaut sur les serveurs mis à jour](https://stalw.art/docs/auth/authorization/permissions#default-roles-on-upgraded-servers).`,
+- Neu: Maskierte E-Mail-Adressen erfordern keine Enterprise-Lizenz mehr.
+- Handlungsbedarf: Wenn du DNS über Netcup verwaltest, trage in der Admin-Konsole deinen Netcup-CloudDNS-API-Schlüssel in das neue API-Schlüssel-Feld dieses DNS-Anbieters ein. Unterstützt werden nur CloudDNS-Domains.
+- Korrekturen für IMAP-Clients, die neu zugestellte Nachrichten überspringen konnten, für Sieve-Subadressen, Kalendereinladungen und wiederkehrende Termine sowie für gleichzeitige WebDAV-Uploads.
+- Sicherheit: IMAP gegen Speichererschöpfung vor der Anmeldung gehärtet, und über WebDAV geteilte Dateien können im Browser keine Skripte mehr ausführen.
+
+[Vollständige Versionshinweise](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
+    pl_PL: `Zaktualizowano Stalwart do wersji 1.1.1.
+
+- Nowość: maskowane adresy e-mail nie wymagają już licencji Enterprise.
+- Wymagane działanie: jeśli zarządzasz DNS przez Netcup, wpisz klucz API Netcup CloudDNS w nowym polu klucza API tego dostawcy DNS w konsoli administracyjnej. Obsługiwane są tylko domeny CloudDNS.
+- Poprawki dla klientów IMAP, którzy mogli pomijać nowo dostarczone wiadomości, dopasowywania podadresów w Sieve, zaproszeń kalendarza i wydarzeń cyklicznych oraz równoczesnych przesyłań WebDAV.
+- Bezpieczeństwo: wzmocniono IMAP przed wyczerpaniem pamięci przed zalogowaniem, a pliki udostępniane przez WebDAV nie mogą już uruchamiać skryptów w przeglądarce.
+
+[Pełne informacje o wydaniu](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
+    fr_FR: `Stalwart mis à jour vers 1.1.1.
+
+- Nouveau : les adresses e-mail masquées ne nécessitent plus de licence Enterprise.
+- Action requise : si vous gérez votre DNS avec Netcup, saisissez votre clé d'API Netcup CloudDNS dans le nouveau champ de clé d'API de ce fournisseur DNS dans la console d'administration. Seuls les domaines CloudDNS sont pris en charge.
+- Corrections pour les clients IMAP qui pouvaient ignorer des messages nouvellement distribués, la correspondance des sous-adresses dans Sieve, les invitations de calendrier et les événements récurrents, et les envois WebDAV simultanés.
+- Sécurité : IMAP renforcé contre l'épuisement de la mémoire avant la connexion, et les fichiers partagés via WebDAV ne peuvent plus exécuter de scripts dans le navigateur.
+
+[Notes de version complètes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
   },
   migrations: {
     up: async () => {},
