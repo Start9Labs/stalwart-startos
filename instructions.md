@@ -12,6 +12,7 @@ Receiving and storing mail works with the domain, the public address and the DNS
 - [Management](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/management) — the web console, the account manager, tasks, troubleshooting and the command-line client.
 - [Accounts and groups](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/auth/accounts) — creating user accounts, aliases, groups and quotas.
 - [Email settings](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/email) — mailing lists, IMAP and JMAP settings, rate limits and mailbox maintenance.
+- [Outbound delivery](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/mta/outbound) — relay routing, TLS policy and delivery troubleshooting.
 - [FAQ](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/faq) — frequently asked questions.
 
 ## What you get on StartOS
@@ -72,8 +73,11 @@ Choose an SMTP relay provider that lets you send from your own domain and gives 
 
 1. At the provider, add your email domain (`example.com`) and publish every DNS record it asks for to verify it. This usually includes the provider's own DKIM records, and a change to your SPF record.
 2. Edit the SPF record that **Show DNS Records** listed for your domain (the `TXT` record starting `v=spf1`) to include the provider, using the `include:` value the provider gives you. Keep a single SPF record per name: a second one makes both invalid. Keep Stalwart's own DKIM records too — Stalwart still signs your mail before handing it to the relay.
-3. In the Admin Console, open **Settings › MTA › Outbound › Routes** and create a route of type **Relay** named `smarthost`, with the provider's SMTP host, its port (usually 587; turn on **Implicit TLS** only for 465), and the username and password the provider gave you.
-4. Open **Settings › MTA › Outbound › Strategy**. In **Route**, keep the rule that returns `'local'` for `is_local_domain(rcpt_domain)`, and change the final (else) value from `'mx'` to `'smarthost'`, quotes included. Save.
+3. In the Admin Console, open **Settings › MTA › Outbound › Routes** and create a route of type **Relay** named `smarthost`, with the provider's SMTP host, its port (usually 587; turn on **Implicit TLS** only for 465), and the username and password the provider gave you. Leave `allowInvalidCerts` off and save.
+4. Under **Settings › MTA › Outbound › TLS Strategies**, create a strategy named `smarthost-tls`. Set `startTls` to `require`, leave `allowInvalidCerts` off, and save. Leave DANE and MTA-STS optional or disabled, not required: they authenticate a recipient's MX hosts, not your relay.
+5. Open **Settings › MTA › Outbound › Strategy**. In **Route**, keep the rule that returns `'local'` for `is_local_domain(rcpt_domain)`, and change the final (else) value from `'mx'` to `'smarthost'`, quotes included. In **TLS**, remove the rule that returns `'invalid-tls'` after a TLS error and set the final (else) value to `'smarthost-tls'`. Save. Authenticated relay connections must require TLS and valid certificates on every attempt, including retries; Stalwart's default TLS fallback accepts invalid certificates.
+
+If you use StartTunnel to keep your home IP private, send Stalwart's outbound traffic through that tunnel too. Otherwise the relay sees your home IP and may include it in message headers. If you use the tunnel only to receive mail on port 25, nothing needs changing.
 
 Send a test message to an address at a large provider such as Gmail and check that it lands in the inbox. Mail for your own domains is still delivered locally.
 
