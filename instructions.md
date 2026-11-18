@@ -1,6 +1,8 @@
 # Stalwart
 
-Running a mail server that the rest of the internet will talk to needs three things you provide: a domain you control, a public IP address that accepts and can send on port 25 (a [StartTunnel](https://docs.start9.com/start-tunnel/) gateway on a VPS is the reliable way to get one), and a few DNS records. The steps below walk through all of it.
+Running a mail server that the rest of the internet will talk to needs four things you provide: a domain you control, a public IP address that accepts connections on port 25 (a [StartTunnel](https://docs.start9.com/start-tunnel/) gateway on a VPS is the reliable way to get one), a few DNS records, and an account with an SMTP relay provider for outgoing mail. The steps below walk through all of it.
+
+Receiving and storing mail works with the domain, the public address and the DNS records alone. Sending is different: Gmail, Microsoft and other large providers routinely reject or spam-folder mail that arrives directly from a home IP address, and from a VPS address with no sending reputation, even when every DNS record is correct. Send through a relay provider — a third-party SMTP service that delivers your mail from its own well-reputed servers — to reach inboxes reliably.
 
 ## Documentation
 
@@ -44,11 +46,11 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
    Port 80 of the same public address must reach your server too: Stalwart's Let's Encrypt certificate for the mail ports is verified over it. On StartTunnel, keep the HTTP redirect for that IP turned on under **Settings › HTTP Redirect** — it is on by default. On a home router, forward port 80 to your server as well.
 
-6. Send outgoing mail from the same public address. Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
+6. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider, including the address records even if a wildcard record already resolves `mail.example.com`: once any record exists for that name, the wildcard stops answering for it. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5.
 
-7. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider, including the address records even if a wildcard record already resolves `mail.example.com`: once any record exists for that name, the wildcard stops answering for it. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5. If your gateway is a StartTunnel VPS, also set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
+7. Open the **Admin Console** with **Open UI**, which takes you to `https://mail.example.com/admin/`, and sign in with the username and password from step 3. Signing in from the server's `.local`, IP or `.onion` address fails with "Client metadata documents are disabled".
 
-8. Open the **Admin Console** with **Open UI**, which takes you to `https://mail.example.com/admin/`, and sign in with the username and password from step 3. Signing in from the server's `.local`, IP or `.onion` address fails with "Client metadata documents are disabled".
+8. Send outgoing mail through your relay provider, as described under **Sending through a relay provider** below.
 
 9. Create your first user in the Admin Console under **Management › Directory › Accounts**. The account's email address is its login for IMAP and SMTP.
 
@@ -63,6 +65,25 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 1 and port 80 from step 5 to be in place; after repeated failed attempts, Let's Encrypt may rate-limit new requests for the hostname. That wait can be about 12 minutes, and restarting cannot shorten it. If there is still no certificate 15 minutes after all three are in place, restart Stalwart.
 
 ## Using Stalwart
+
+### Sending through a relay provider
+
+Choose an SMTP relay provider that lets you send from your own domain and gives you SMTP credentials. Then:
+
+1. At the provider, add your email domain (`example.com`) and publish every DNS record it asks for to verify it. This usually includes the provider's own DKIM records, and a change to your SPF record.
+2. Edit the SPF record that **Show DNS Records** listed for your domain (the `TXT` record starting `v=spf1`) to include the provider, using the `include:` value the provider gives you. Keep a single SPF record per name: a second one makes both invalid. Keep Stalwart's own DKIM records too — Stalwart still signs your mail before handing it to the relay.
+3. In the Admin Console, open **Settings › MTA › Outbound › Routes** and create a route of type **Relay** named `smarthost`, with the provider's SMTP host, its port (usually 587; turn on **Implicit TLS** only for 465), and the username and password the provider gave you.
+4. Open **Settings › MTA › Outbound › Strategy**. In **Route**, keep the rule that returns `'local'` for `is_local_domain(rcpt_domain)`, and change the final (else) value from `'mx'` to `'smarthost'`, quotes included. Save.
+
+Send a test message to an address at a large provider such as Gmail and check that it lands in the inbox. Mail for your own domains is still delivered locally.
+
+### Sending directly
+
+Without a relay, Stalwart delivers each message straight to the recipient's mail server. From a home IP address this will generally not reach inboxes: residential addresses are on the blocklists large providers use. From a VPS address it depends on that address's reputation, which you cannot control, so it is not recommended. If you send directly anyway:
+
+- Under **System › Gateways › Outbound Traffic**, choose the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
+- If that gateway is a StartTunnel VPS, set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
+- The gateway must allow outgoing connections on port 25, which most home ISPs and some VPS providers block.
 
 ### Admin Console
 
@@ -81,7 +102,6 @@ Users in the internal directory can manage passkeys under **Account > Credential
 
 ## Limitations
 
-- Many ISPs and some VPS providers block outgoing connections on port 25, which stops Stalwart from delivering mail to other servers. If your provider does, ask them to unblock it or configure a relay host in the Admin Console.
 - The email domain and hostname you chose during setup can only be changed in the Admin Console afterwards, not from StartOS.
 - POP3 is not exposed. Use IMAP.
 - After restoring Stalwart from a backup, add the public domain and enable the public addresses on the mail interfaces again; they are not part of the backup.
