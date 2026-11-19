@@ -2,9 +2,23 @@ import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { hostId } from '../interfaces'
 import { sdk } from '../sdk'
-import { jmapQuery, smtpPort } from '../utils'
+import { adminUser, httpPort, jmapQuery, smtpPort } from '../utils'
 
-export const showDnsRecords = sdk.Action.withoutInput(
+const { InputSpec, Value } = sdk
+
+const inputSpec = InputSpec.of({
+  password: Value.text({
+    name: i18n('Admin password'),
+    description: i18n(
+      'The password of admin@ followed by your email domain. If you no longer have it, stop Stalwart and run Set Admin Password.',
+    ),
+    required: true,
+    default: null,
+    masked: true,
+  }),
+})
+
+export const showDnsRecords = sdk.Action.withInput(
   'show-dns-records',
 
   async () => ({
@@ -18,12 +32,16 @@ export const showDnsRecords = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
 
-  async ({ effects }) => {
+  inputSpec,
+
+  async () => ({}),
+
+  async ({ effects, input }) => {
     const store = await storeJson.read().once()
-    if (!store?.adminPassword || !store.hostname) {
+    if (!store?.hostname || !store.domain) {
       throw new Error(i18n('Stalwart has not been set up yet'))
     }
-    const { hostname, adminPassword } = store
+    const { hostname, domain } = store
 
     const addresses = await sdk.host
       .getOwn(effects, hostId, (h) => h?.bindings[smtpPort]?.addresses ?? null)
@@ -49,7 +67,10 @@ export const showDnsRecords = sdk.Action.withoutInput(
     }
 
     const domains = await jmapQuery<{ name: string; dnsZoneFile: string }>(
-      adminPassword,
+      {
+        port: httpPort,
+        credentials: `${adminUser}@${domain}:${input.password}`,
+      },
       'Domain',
       ['name', 'dnsZoneFile'],
     )

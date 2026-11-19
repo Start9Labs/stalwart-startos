@@ -17,8 +17,9 @@ Receiving and storing mail works with the domain, the public address and the DNS
 
 ## What you get on StartOS
 
-- **Admin Console** — the Stalwart web console, where you manage domains, accounts and every server setting. The same address serves JMAP, CalDAV, CardDAV, WebDAV and mail client autoconfiguration.
-- **Account Manager** — a self-service page where each user changes their password and manages app passwords, passkeys and two-factor authentication.
+- **Admin Console** — the Stalwart web console, where you manage domains, accounts and every server setting.
+- **Account Manager** — a self-service page where each user changes their password and manages app passwords, passkeys and two-factor authentication. The Admin Console and Account Manager share one list of addresses, separate from JMAP, CalDAV and CardDAV, so they stay private when you publish your hostname.
+- **JMAP, Calendars & Contacts** — JMAP for modern mail clients, and CalDAV, CardDAV and WebDAV for calendars, contacts and files. The same addresses serve mail client autoconfiguration and MTA-STS.
 - **SMTP** (port 25), **SMTP Submission** (port 465), **IMAP** (port 993) and **ManageSieve** (port 4190) — the mail protocols, served by Stalwart with its own TLS certificate.
 - **Actions** to set the admin password and to list the DNS records for your domains.
 
@@ -26,15 +27,13 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
 ## Getting set up
 
-1. Add your mail server hostname as a public domain. Under **Services > Stalwart > Interfaces > Admin Console**, click **Add Domain**, choose **Public Domain**, and add `mail.example.com` with Let's Encrypt. The web console accepts sign-in only at this address, and Stalwart obtains the Let's Encrypt certificate for the mail ports through it, so keep it enabled. Add `autoconfig.example.com` and `mta-sts.example.com` the same way if you want mail clients to configure themselves and other servers to enforce TLS when delivering to you.
+1. Run **Set Up Mail Server** and enter your email domain (`example.com`) and the hostname of this server (`mail.example.com`). The hostname must be the domain itself or a name under it.
 
-2. Run **Set Up Mail Server**. Choose `mail.example.com` as the hostname — the list offers the public domains you added in step 1 — and enter your email domain (`example.com`). The hostname must be the email domain itself or a name under it.
+2. Run **Set Admin Password**. Copy the username (`admin@example.com`) and password it shows — the password is not shown again, but you can run the action again for a new one.
 
-3. Run **Set Admin Password**. Copy the username and password it shows — the password is not shown again, but you can run the action again for a new one.
+3. Start Stalwart. The first start takes a minute while it creates the domain, its DKIM keys and the database.
 
-4. Start Stalwart. The first start takes a minute while it creates the domain, its DKIM keys and the database.
-
-5. Publish the mail ports on your public address. On the **Interfaces** tab, enable the public IPv4 address on the **SMTP**, **SMTP Submission** and **IMAP** interfaces (and **ManageSieve** if you use server-side filters). StartOS publishes each one on the port shown in its address — `2525`, `10465`, `10993` and `14190`. Mail expects the standard ports, so add a port forward on your gateway from each standard port to the published one:
+4. Publish the mail ports on your public address. On the **Interfaces** tab, enable the public IPv4 address on the **SMTP**, **SMTP Submission** and **IMAP** interfaces (and **ManageSieve** if you use server-side filters). StartOS publishes each one on the port shown in its address — `2525`, `10465`, `10993` and `14190`. Mail expects the standard ports, so add a port forward on your gateway from each standard port to the published one:
 
    | Standard port | Forward to |
    | ------------- | ---------- |
@@ -47,9 +46,11 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
    Port 80 of the same public address must reach your server too: Stalwart's Let's Encrypt certificate for the mail ports is verified over it. On StartTunnel, keep the HTTP redirect for that IP turned on under **Settings › HTTP Redirect** — it is on by default. On a home router, forward port 80 to your server as well.
 
-6. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider, including the address records even if a wildcard record already resolves `mail.example.com`: once any record exists for that name, the wildcard stops answering for it. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 5.
+5. Publish your DNS records. Run **Show DNS Records** and create everything it lists at your DNS provider, including the address records even if a wildcard record already resolves `mail.example.com`: once any record exists for that name, the wildcard stops answering for it. It fills in the address records for `mail.example.com` from every gateway whose public address you enabled on the SMTP interface in step 4.
 
-7. Open the **Admin Console** with **Open UI**, which takes you to `https://mail.example.com/admin/`, and sign in with the username and password from step 3. Signing in from the server's `.local`, IP or `.onion` address fails with "Client metadata documents are disabled".
+6. Add your hostname as a public domain. On the **JMAP, Calendars & Contacts** interface, add `mail.example.com` as a public domain with Let's Encrypt. StartOS also enables the domain on the mail interfaces whose public IPv4 address you enabled in step 4. The domain stays off on the **Admin Console** and **Account Manager**. Stalwart obtains the Let's Encrypt certificate it presents on the mail ports through `https://mail.example.com`, so keep that address enabled. Add `autoconfig.example.com` and `mta-sts.example.com` the same way if you want mail clients to configure themselves and other servers to enforce TLS when delivering to you.
+
+7. Open the **Admin Console** with **Open UI** from your local network, at an address such as `https://your-server.local:8443/admin/`, and sign in with the username and password from step 2. The first time you sign in, Stalwart asks you to allow the web console access to your account; it remembers your answer.
 
 8. Send outgoing mail through your relay provider, as described under **Sending through a relay provider** below.
 
@@ -63,7 +64,9 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
     | Outgoing (SMTP) | `mail.example.com`, port 465, SSL |
     | Username        | the full email address            |
 
-Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 1 and port 80 from step 5 to be in place; after repeated failed attempts, Let's Encrypt may rate-limit new requests for the hostname. That wait can be about 12 minutes, and restarting cannot shorten it. If there is still no certificate 15 minutes after all three are in place, restart Stalwart.
+    Calendar and contacts apps find their server from `https://mail.example.com` with the same username and password.
+
+Until the Let's Encrypt certificate has been issued, Stalwart presents a self-signed certificate on the mail ports and your client will warn about it. Issuance needs the DNS `A` record, the public domain from step 6 and port 80 from step 4 to be in place; after repeated failed attempts, Let's Encrypt may rate-limit new requests for the hostname. That wait can be about 12 minutes, and restarting cannot shorten it. If there is still no certificate 15 minutes after all three are in place, restart Stalwart.
 
 ## Using Stalwart
 
@@ -93,16 +96,22 @@ Without a relay, Stalwart delivers each message straight to the recipient's mail
 
 Sign in with the admin credentials. Domains are managed under **Management › Domains**, users and groups under **Management › Directory**, and every server setting under **Settings**. Additional email domains can be added there at any time — run **Show DNS Records** again afterwards for their records.
 
+### Where you can sign in
+
+The Admin Console and Account Manager accept sign-in at every HTTPS address enabled on their interfaces, such as `https://your-server.local:8443/admin/`, the server's LAN IP and its HTTPS `.onion` address. The two interfaces share one list of addresses, on port 8443 unless another service already holds that port; the **Interfaces** tab shows the real number. `mail.example.com` on port 443 never serves either page. To choose where sign-in works, enable or disable addresses on either interface's page under **Interfaces**. Enabling or disabling an address restarts Stalwart, which interrupts mail for a few seconds. A disabled address still loads the sign-in page but refuses sign-in. Plain-HTTP addresses, such as the `.onion` address on port 8081, do not accept sign-in.
+
+To reach the Admin Console and Account Manager from the internet, enable `mail.example.com` on the **Account Manager** interface's page. They are then served at `https://mail.example.com:8443/admin/` and `https://mail.example.com:8443/account/`.
+
 ### Account Manager
 
-Give `https://mail.example.com/account/` (using your setup hostname) to your users. They sign in with their own email address and password to change the password, create app passwords for mail clients, and enable two-factor authentication.
+Give your users the Account Manager's address, such as `https://your-server.local:8443/account/` on your local network. They sign in with their own email address and password to change the password, create app passwords for mail clients, and enable two-factor authentication.
 
-Users in the internal directory can manage passkeys under **Account > Credentials** and use them for passwordless sign-in. Keep using HTTPS on your setup hostname. Passkeys are not a second factor: signing in with one does not ask for a TOTP code.
+Users in the internal directory can manage passkeys under **Account > Credentials** and use them for passwordless sign-in. Passkeys work only on an address that uses your setup hostname, so they need `mail.example.com` enabled on the Account Manager, as described under **Where you can sign in**; they do not work at `your-server.local`. Passkeys are not a second factor: signing in with one does not ask for a TOTP code.
 
 ### Actions
 
-- **Set Admin Password** — generates a new password for the `admin` account and shows it once. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then.
-- **Show DNS Records** — lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. Run it after adding a domain, and again if you rotate DKIM keys.
+- **Set Admin Password** — generates a new password for the `admin@` account of your email domain and shows it once. StartOS keeps only a hash of it, so save it in your password manager. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then. It also turns off two-factor authentication on that account, so the new password alone signs in.
+- **Show DNS Records** — asks for the admin password, then lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. Run it after adding a domain, and again if you rotate DKIM keys.
 
 ## Limitations
 

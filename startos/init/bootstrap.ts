@@ -1,60 +1,20 @@
 import { configJson, storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
+import { withMaintenanceStalwart } from '../maintenance'
 import { sdk } from '../sdk'
-import {
-  checkLive,
-  chownCommand,
-  getStalwartSub,
-  jmap,
-  jmapQuery,
-  recoveryAdminUser,
-  webuiDir,
-} from '../utils'
+import { Api, consoleClientId, jmap, jmapQuery, webuiDir } from '../utils'
 
 export const bootstrap = sdk.setupOnInit(async (effects, _kind, progress) => {
   const store = await storeJson.read().const(effects)
-  if (!store?.hostname || !store.domain || !store.adminPassword) return
+  if (!store?.hostname || !store.domain || !store.adminPasswordSet) return
   if ((await configJson.read().once()) !== null) return
-  const { hostname, domain, adminPassword } = store
-
-  const runWith = (
-    id: string,
-    env: Record<string, string>,
-    fn: () => Promise<unknown>,
-  ) =>
-    sdk.Daemons.of(effects)
-      .addOneshot('chown', {
-        subcontainer: getStalwartSub(effects, `${id}-chown`),
-        exec: { command: chownCommand, user: 'root' },
-        requires: [],
-      })
-      .addDaemon('stalwart', {
-        subcontainer: getStalwartSub(effects, `${id}-sub`),
-        exec: { command: sdk.useEntrypoint(), env },
-        ready: { display: null, fn: checkLive },
-        requires: ['chown'],
-      })
-      .addOneshot('run', {
-        subcontainer: null,
-        exec: {
-          fn: async () => {
-            await fn()
-            return null
-          },
-        },
-        requires: ['stalwart'],
-      })
-      .runUntilSuccess(300_000)
-
-  const recoveryAdmin = {
-    STALWART_RECOVERY_ADMIN: `${recoveryAdminUser}:${adminPassword}`,
-  }
+  const { hostname, domain } = store
 
   const phase = progress.addPhase(i18n('Configuring Stalwart'))
   phase.start()
 
-  await runWith('bootstrap', recoveryAdmin, () =>
-    jmap(adminPassword, [
+  await withMaintenanceStalwart(effects, 'bootstrap', (api) =>
+    jmap(api, [
       [
         'x:Bootstrap/set',
         {
@@ -74,39 +34,28 @@ export const bootstrap = sdk.setupOnInit(async (effects, _kind, progress) => {
     ]),
   )
 
-  await runWith('configure', recoveryAdmin, () =>
-    configure(adminPassword, hostname, domain),
+  await withMaintenanceStalwart(
+    effects,
+    'configure',
+    (api) => configure(api, hostname, domain),
+    { normalMode: true },
   )
 
   phase.complete()
 })
 
-async function configure(
-  adminPassword: string,
-  hostname: string,
-  domain: string,
-) {
-  const [webui] = await jmapQuery<{ id: string }>(
-    adminPassword,
-    'Application',
-    ['id'],
-  )
+async function configure(api: Api, hostname: string, domain: string) {
+  const [webui] = await jmapQuery<{ id: string }>(api, 'Application', ['id'])
   const pop3s = (
-    await jmapQuery<{ id: string; name: string }>(
-      adminPassword,
-      'NetworkListener',
-      ['name'],
-    )
+    await jmapQuery<{ id: string; name: string }>(api, 'NetworkListener', [
+      'name',
+    ])
   ).find((l) => l.name === 'pop3s')
-  const [mailDomain] = await jmapQuery<{ id: string }>(
-    adminPassword,
-    'Domain',
-    ['id'],
-  )
+  const [mailDomain] = await jmapQuery<{ id: string }>(api, 'Domain', ['id'])
   const san =
     hostname === domain ? domain : hostname.slice(0, -domain.length - 1)
 
-  await jmap(adminPassword, [
+  await jmap(api, [
     [
       'x:Http/set',
       {
@@ -118,16 +67,21 @@ async function configure(
     ],
     [
       'x:Application/set',
-      { update: { [webui.id]: { unpackDirectory: webuiDir } } },
+      {
+        update: {
+          [webui.id]: {
+            unpackDirectory: webuiDir,
+            oauthClientId: consoleClientId,
+          },
+        },
+      },
       'c2',
     ],
   ])
   if (pop3s) {
-    await jmap(adminPassword, [
-      ['x:NetworkListener/set', { destroy: [pop3s.id] }, 'c1'],
-    ])
+    await jmap(api, [['x:NetworkListener/set', { destroy: [pop3s.id] }, 'c1']])
   }
-  const [[, { created }]] = (await jmap(adminPassword, [
+  const [[, { created }]] = (await jmap(api, [
     [
       'x:AcmeProvider/set',
       {
@@ -142,7 +96,7 @@ async function configure(
       'c1',
     ],
   ])) as [[string, { created: { acme: { id: string } } }, string]]
-  await jmap(adminPassword, [
+  await jmap(api, [
     [
       'x:Domain/set',
       {
