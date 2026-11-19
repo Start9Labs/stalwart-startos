@@ -31,7 +31,7 @@ const dict = {
   'The public name of this server, e.g. mail.example.com. Other mail servers deliver to it, your mail clients connect to it, and its TLS certificate is issued for it. It must be the email domain itself or a name under it.': 23,
   'Set Up Mail Server': 24,
   'Choose the email domain and the hostname of this mail server.': 25,
-  'These cannot be changed from StartOS once set. To change them later, use the Stalwart web console.': 26,
+  "These cannot be changed from StartOS once set. To change them later, use Stalwart's Admin Console web interface.": 26,
   Setup: 27,
   'The hostname must be the email domain or a name under it': 28,
   // actions/setAdminPassword.ts
@@ -57,6 +57,7 @@ const dict = {
   // interfaces.ts
   'JMAP, Calendars & Contacts': 46,
   'Where JMAP mail clients and CalDAV, CardDAV and WebDAV calendar, contacts and file clients connect. Never serves the Admin Console or Account Manager.': 47,
+  "If you use (or plan to use) a StartTunnel gateway with this mail server, first open Services › Stalwart › Outbound Traffic and choose it as Stalwart's gateway, before you run this action. Otherwise Stalwart's outgoing mail and its Let's Encrypt certificate requests leave from your default internet connection's IP address.": 50,
 } as const
 
 /**

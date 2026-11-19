@@ -31,14 +31,22 @@ export const inputSpec = InputSpec.of({
 export const setup = sdk.Action.withInput(
   'setup',
 
-  async () => ({
+  async ({ effects }) => ({
     name: i18n('Set Up Mail Server'),
     description: i18n(
       'Choose the email domain and the hostname of this mail server.',
     ),
-    warning: i18n(
-      'These cannot be changed from StartOS once set. To change them later, use the Stalwart web console.',
-    ),
+    warning: [
+      i18n(
+        "These cannot be changed from StartOS once set. To change them later, use Stalwart's Admin Console web interface.",
+      ),
+      (await storeJson.read((s) => s.adminPasswordSet).const(effects)) &&
+        i18n(
+          "If you use (or plan to use) a StartTunnel gateway with this mail server, first open Services › Stalwart › Outbound Traffic and choose it as Stalwart's gateway, before you run this action. Otherwise Stalwart's outgoing mail and its Let's Encrypt certificate requests leave from your default internet connection's IP address.",
+        ),
+    ]
+      .filter(Boolean)
+      .join('<br /><br />'),
     allowedStatuses: 'only-stopped',
     group: i18n('Setup'),
     visibility: 'hidden',
