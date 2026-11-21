@@ -10,7 +10,7 @@ const inputSpec = InputSpec.of({
   password: Value.text({
     name: i18n('Admin password'),
     description: i18n(
-      'The password of admin@ followed by your email domain. If you no longer have it, stop Stalwart and run Set Admin Password.',
+      'The password of the admin account. If two-factor authentication is enabled, use an app password for that account instead, created with Permissions › Type set to "Same permissions as account". If you no longer have access, stop Stalwart and run Set Admin Password.',
     ),
     required: true,
     default: null,
@@ -41,7 +41,7 @@ export const showDnsRecords = sdk.Action.withInput(
     if (!store?.hostname || !store.domain) {
       throw new Error(i18n('Stalwart has not been set up yet'))
     }
-    const { hostname, domain } = store
+    const { hostname } = store
 
     const addresses = await sdk.host
       .getOwn(effects, hostId, (h) => h?.bindings[smtpPort]?.addresses ?? null)
@@ -69,7 +69,7 @@ export const showDnsRecords = sdk.Action.withInput(
     const domains = await jmapQuery<{ name: string; dnsZoneFile: string }>(
       {
         port: httpPort,
-        credentials: `${adminUser}@${domain}:${input.password}`,
+        credentials: `${adminUser}:${input.password}`,
       },
       'Domain',
       ['name', 'dnsZoneFile'],

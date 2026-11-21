@@ -31,7 +31,7 @@ Everything Stalwart stores — mail, calendars, contacts, files, settings — li
 
 2. Run **Set Up Mail Server** and enter your email domain (`example.com`) and the hostname of this server (`mail.example.com`). The hostname must be the domain itself or a name under it.
 
-3. Run **Set Admin Password**. Copy the username (`admin@example.com`) and password it shows — the password is not shown again, but you can run the action again for a new one.
+3. Run **Set Admin Password**. Copy the username (`admin`) and password it shows — the password is not shown again, but you can run the action again for a new one.
 
 4. Start Stalwart. The first start takes a minute while it creates the domain, its DKIM keys and the database.
 
@@ -122,8 +122,8 @@ Users in the internal directory can manage passkeys under **Account > Credential
 
 ### Actions
 
-- **Set Admin Password** — generates a new password for the `admin@` account of your email domain and shows it once. StartOS keeps only a hash of it, so save it in your password manager. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then. It also turns off two-factor authentication on that account, so the new password alone signs in.
-- **Show DNS Records** — asks for the admin password, then lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. Run it after adding a domain, and again if you rotate DKIM keys.
+- **Set Admin Password** — generates a new password for `admin` in Stalwart's default email domain and shows it once. StartOS keeps only a hash of it, so save it in your password manager. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then. It also turns off two-factor authentication on that account, so the new password alone signs in.
+- **Show DNS Records** — asks for the admin password, then lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. If two-factor authentication is enabled for the admin account, enter an app password for that account instead of its main password. To create one, sign in to the Account Manager as `admin` and go to **Credentials › App Passwords › Create App Password**, then set **Permissions › Type** to **Same permissions as account**. An app password with **Replace all permissions** also works if its permissions include at least **"Sign in to the server"**, **"Query domains"** and **"Get domains"**. Run it after adding a domain, and again if you rotate DKIM keys.
 
 ## Limitations
 

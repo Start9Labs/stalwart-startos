@@ -114,9 +114,10 @@ export async function jmapQuery<A>(
   api: Api,
   type: string,
   properties?: string[],
+  filter: Record<string, unknown> = {},
 ): Promise<A[]> {
   const [, [, { list }]] = await jmap(api, [
-    [`x:${type}/query`, { filter: {} }, 'q'],
+    [`x:${type}/query`, { filter }, 'q'],
     [
       `x:${type}/get`,
       {
@@ -138,6 +139,7 @@ type Domain = {
   name: string
   certificateManagement: { '@type': string }
 }
+
 export async function armAcme(api: Api, hostname: string, domain: string) {
   const now = new Date()
   const certs = await jmapQuery<Certificate>(api, 'Certificate', [
@@ -152,9 +154,12 @@ export async function armAcme(api: Api, hostname: string, domain: string) {
   ) {
     return
   }
-  const mailDomain = (
-    await jmapQuery<Domain>(api, 'Domain', ['name', 'certificateManagement'])
-  ).find((d) => d.name === domain)
+  const [mailDomain] = await jmapQuery<Domain>(
+    api,
+    'Domain',
+    ['name', 'certificateManagement'],
+    { name: domain },
+  )
   if (mailDomain?.certificateManagement['@type'] !== 'Automatic') return
 
   await jmap(api, [
@@ -282,22 +287,28 @@ type Account = {
   credentials: Record<string, { '@type': string }>
 }
 // Also clears the account's two-factor secret, so the new password alone signs in.
-export async function setAdminAccountPassword(
-  api: Api,
-  domain: string,
-  passwordHash: string,
-) {
-  const domainId = (
-    await jmapQuery<{ id: string; name: string }>(api, 'Domain', ['name'])
-  ).find((d) => d.name === domain)?.id
-  if (!domainId) throw new Error(`Domain ${domain} not found`)
-  const admin = (await jmapQuery<Account>(api, 'Account')).find(
-    (a) =>
-      a['@type'] === 'User' && a.name === adminUser && a.domainId === domainId,
-  )
-  const key = Object.entries(admin?.credentials ?? {}).find(
+export async function setAdminAccountPassword(api: Api, passwordHash: string) {
+  const [[, { list }]] = await jmap(api, [
+    [
+      'x:SystemSettings/get',
+      { ids: ['singleton'], properties: ['defaultDomainId'] },
+      'g',
+    ],
+  ])
+  // Stalwart resolves bare admin logins through its default domain.
+  const [{ defaultDomainId: domainId }] = list as { defaultDomainId: string }[]
+  const [admin] = await jmapQuery<Account>(api, 'Account', undefined, {
+    '@type': 'User',
+    name: adminUser,
+    domainId,
+  })
+  const credentials = admin?.credentials ?? {}
+  const key = Object.entries(credentials).find(
     ([, c]) => c['@type'] === 'Password',
   )?.[0]
+  // Credential keys survive deletions.
+  let nextKey = 0
+  while (String(nextKey) in credentials) nextKey++
   await jmap(api, [
     [
       'x:Account/set',
@@ -310,7 +321,7 @@ export async function setAdminAccountPassword(
                     [`credentials/${key}/otpUrl`]: null,
                   }
                 : {
-                    [`credentials/${Object.keys(admin.credentials).length}`]: {
+                    [`credentials/${nextKey}`]: {
                       '@type': 'Password',
                       secret: passwordHash,
                     },

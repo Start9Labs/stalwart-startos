@@ -1,5 +1,5 @@
 import { utils } from '@start9labs/start-sdk'
-import { storeJson } from '../fileModels/store.json'
+import { configJson, storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 
@@ -54,7 +54,10 @@ export const setup = sdk.Action.withInput(
 
   inputSpec,
 
-  async () => ({}),
+  async () => {
+    const store = await storeJson.read().once()
+    return { hostname: store?.hostname, domain: store?.domain }
+  },
 
   async ({ effects, input }) => {
     const domain = input.domain.trim().toLowerCase()
@@ -62,6 +65,15 @@ export const setup = sdk.Action.withInput(
     if (hostname !== domain && !hostname.endsWith(`.${domain}`)) {
       throw new Error(
         i18n('The hostname must be the email domain or a name under it'),
+      )
+    }
+    if ((await configJson.read().once()) !== null) {
+      const store = await storeJson.read().once()
+      if (store?.hostname === hostname && store.domain === domain) return null
+      throw new Error(
+        i18n(
+          "These cannot be changed from StartOS once set. To change them later, use Stalwart's Admin Console web interface.",
+        ),
       )
     }
     await storeJson.merge(effects, { domain, hostname })
