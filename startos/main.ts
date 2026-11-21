@@ -48,7 +48,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
                 const { adminPasswordHash, ...rest } =
                   (await storeJson.read().once()) ?? {}
                 if (adminPasswordHash) {
-                  await setAdminAccountPassword(api, domain, adminPasswordHash)
+                  await setAdminAccountPassword(api, adminPasswordHash)
                   await storeJson.write(effects, rest)
                 }
                 await separateConsoleListener(api)

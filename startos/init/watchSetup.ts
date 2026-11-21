@@ -11,6 +11,8 @@ export const watchSetup = sdk.setupOnInit(async (effects) => {
     await sdk.action.createOwnTask(effects, setup, 'critical', {
       reason: i18n('Choose the email domain and hostname of your mail server'),
     })
+  } else {
+    await sdk.action.clearTask(effects, `stalwart:${setup.id}`)
   }
 
   if (!store?.adminPasswordSet) {

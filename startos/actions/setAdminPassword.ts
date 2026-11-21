@@ -40,8 +40,6 @@ export const setAdminPassword = sdk.Action.withoutInput(
       adminPasswordSet: true,
       adminPasswordHash: hashPassword(adminPassword),
     })
-    const domain = await storeJson.read((s) => s.domain).once()
-
     return {
       version: '1',
       title: i18n('Stalwart Admin Credentials'),
@@ -55,9 +53,7 @@ export const setAdminPassword = sdk.Action.withoutInput(
             type: 'single',
             name: i18n('Username'),
             description: null,
-            value: domain
-              ? `${adminUser}@${domain}`
-              : i18n('admin@ followed by your email domain'),
+            value: adminUser,
             masked: false,
             copyable: true,
             qr: false,

@@ -49,9 +49,8 @@ const dict = {
   'Address records': 39,
   'No public address is enabled on the SMTP interface yet, so there is no address record to publish. Enable one, then run this again.': 40,
   'Replaces the current admin password. The old password stops working the next time Stalwart starts.': 41,
-  'admin@ followed by your email domain': 42,
   'Admin password': 43,
-  'The password of admin@ followed by your email domain. If you no longer have it, stop Stalwart and run Set Admin Password.': 44,
+  'The password of the admin account. If two-factor authentication is enabled, use an app password for that account instead. If you no longer have access, stop Stalwart and run Set Admin Password.': 44,
   // utils.ts
   'Incorrect password': 45,
   // interfaces.ts
