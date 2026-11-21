@@ -1,8 +1,8 @@
 # Stalwart
 
-Running a mail server that the rest of the internet will talk to needs four things you provide: a domain you control, a public IP address that accepts connections on port 25 (a [StartTunnel](https://docs.start9.com/start-tunnel/) gateway on a VPS is the reliable way to get one), a few DNS records, and an account with an SMTP relay provider for outgoing mail. The steps below walk through all of it.
+Running a mail server that the rest of the internet will talk to needs four things you provide: a domain you control, a public IP address that accepts connections on port 25 (a [StartTunnel](https://docs.start9.com/start-tunnel/) gateway on a VPS is the reliable way to get one), a few DNS records, and a way to send outgoing mail. To send, you need either an account with an SMTP relay provider, which the next paragraph recommends, or a gateway that lets your server open connections to port 25 on other mail servers, which most home ISPs and some VPS providers block. The steps below walk through all of it.
 
-Receiving and storing mail works with the domain, the public address and the DNS records alone. Sending is different: Gmail, Microsoft and other large providers routinely reject or spam-folder mail that arrives directly from a home IP address, and from a VPS address with no sending reputation, even when every DNS record is correct. Send through a relay provider — a third-party SMTP service that delivers your mail from its own well-reputed servers — to reach inboxes reliably.
+Receiving and storing mail works with the domain, the public address and the DNS records alone. Sending directly is harder. Home IP addresses are usually on policy blocklists such as the Spamhaus PBL, which mark addresses that the ISP says should not send mail directly, and many home ISPs also block outgoing connections to port 25. A VPS address can work, but large providers may throttle mail from an address with no sending history until it builds one, and Microsoft's Outlook.com sometimes blocks whole VPS address ranges because of mail other customers sent from them; clearing such a block means asking each provider to delist the affected IP range. A relay provider — a third-party SMTP service that delivers your mail from its own established servers — avoids these problems.
 
 ## Documentation
 
@@ -88,11 +88,21 @@ Send a test message to an address at a large provider such as Gmail and check th
 
 ### Sending directly
 
-Without a relay, Stalwart delivers each message straight to the recipient's mail server. From a home IP address this will generally not reach inboxes: residential addresses are on the blocklists large providers use. From a VPS address it depends on that address's reputation, which you cannot control, so it is not recommended. If you send directly anyway:
+Without a relay, Stalwart delivers each message straight to the recipient's mail server. From a home IP address this will generally not reach inboxes: residential addresses are on policy blocklists that large providers check, and only your ISP can take them off. From a VPS address it depends on that address's reputation, which includes its IP range's history and any blocklist entries. You can check that reputation and ask to have entries cleared, but you cannot fully control it. If you send directly anyway:
 
 - Stalwart's outbound gateway from step 1 must be the gateway you published the ports on, so other mail servers see your mail arriving from the IP address that your DNS records name.
 - If that gateway is a StartTunnel VPS, set the reverse DNS (PTR) record for its IP to `mail.example.com` in your VPS provider's control panel — many receiving servers reject mail from an address without one.
 - The gateway must allow outgoing connections on port 25, which most home ISPs and some VPS providers block.
+
+These resources help you watch your address's reputation and clear blocklist entries:
+
+- [Microsoft SNDS](https://sendersupport.olc.protection.outlook.com/snds/) — sign in with a Microsoft account and request access to your IP address to see Outlook.com's data on the mail it receives from that address.
+- [Outlook.com postmaster](https://sendersupport.olc.protection.outlook.com/pm/) — Microsoft's sender guidelines for mail to Outlook.com, Hotmail and Live addresses. Its **Troubleshooting** page links Microsoft's sender support form, which needs a Microsoft account sign-in, for asking Microsoft to unblock an IP address. Mail that Microsoft 365 business mailboxes block is delisted through Microsoft's separate [delisting portal](https://sender.office.com/).
+- [Google Postmaster Tools](https://postmaster.google.com/) — verify your domain to see its spam rate at Gmail and whether it meets Gmail's sender requirements. Google's [sender guidelines](https://support.google.com/a/answer/81126) list what Gmail requires.
+- [Yahoo Sender Hub](https://senders.yahooinc.com/) — Yahoo's and AOL's sender requirements. Its [Contact](https://senders.yahooinc.com/contact/) page opens a ticket for problems delivering to Yahoo and AOL mailboxes.
+- [Spamhaus IP and domain reputation checker](https://check.spamhaus.org/) — shows which Spamhaus list includes your IP address and why, and offers removal for the lists that allow it. A listing on the Spamhaus Blocklist (SBL) can only be removed at the request of your hosting provider.
+- [Barracuda removal request](https://www.barracudacentral.org/rbl/removal-request) — request removal from the Barracuda reputation list.
+- [MXToolbox blacklist check](https://mxtoolbox.com/blacklists.aspx) — check your IP address against many blocklists at once.
 
 ### Admin Console
 
