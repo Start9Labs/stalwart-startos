@@ -9,7 +9,7 @@ const dict = {
   'Stalwart is not ready': 4,
   // interfaces.ts
   'Admin Console': 5,
-  'Web console for managing domains, accounts and server settings. Also serves JMAP, CalDAV, CardDAV, WebDAV and mail client autoconfiguration.': 6,
+  'Web console for managing domains, accounts and server settings. Shares its addresses with the Account Manager.': 6,
   'Account Manager': 7,
   'Self-service portal where users change their password and manage app passwords and two-factor authentication.': 8,
   SMTP: 9,
@@ -21,22 +21,22 @@ const dict = {
   ManageSieve: 15,
   'Lets mail clients edit server-side filter rules (STARTTLS). Publish it on port 4190 of your public address.': 16,
   // init
-  "Under Services > Stalwart > Interfaces > Admin Console, click Add Domain, choose Public Domain, and add your mail server's hostname (for example, mail.example.com). Then run this action and choose that hostname, along with your email domain.": 17,
+  'Choose the email domain and hostname of your mail server': 17,
   'Set the admin password before signing in to the Stalwart web console': 18,
   'Configuring Stalwart': 19,
   // actions/setup.ts
   'Email domain': 20,
   'The domain your email addresses will end in, e.g. example.com for user@example.com. More domains can be added later in the Stalwart web console.': 21,
   'Mail server hostname': 22,
-  'The public name of this server, e.g. mail.example.com. Other mail servers deliver to it, your mail clients connect to it, its TLS certificate is issued for it, and the web console accepts sign-in only there. It must be the email domain itself or a name under it.': 23,
+  'The public name of this server, e.g. mail.example.com. Other mail servers deliver to it, your mail clients connect to it, and its TLS certificate is issued for it. It must be the email domain itself or a name under it.': 23,
   'Set Up Mail Server': 24,
   'Choose the email domain and the hostname of this mail server.': 25,
-  "Under Services > Stalwart > Interfaces > Admin Console, click Add Domain, choose Public Domain, and add your mail server's hostname (for example, mail.example.com) before choosing it here. The hostname and email domain cannot be changed from StartOS once set. To change them later, use the Stalwart web console.": 26,
+  "These cannot be changed from StartOS once set. To change them later, use Stalwart's Admin Console web interface.": 26,
   Setup: 27,
   'The hostname must be the email domain or a name under it': 28,
   // actions/setAdminPassword.ts
   'Set Admin Password': 29,
-  '<p>Generate a new random password for the Stalwart administrator account.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>': 30,
+  '<p>Generate a new random password for the Stalwart administrator account. It also turns off two-factor authentication on that account, so the new password alone signs in.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>': 30,
   'Stalwart Admin Credentials': 31,
   'Use these to sign in to the Stalwart web console. The password is shown only now.': 32,
   Username: 33,
@@ -49,10 +49,15 @@ const dict = {
   'Address records': 39,
   'No public address is enabled on the SMTP interface yet, so there is no address record to publish. Enable one, then run this again.': 40,
   'Replaces the current admin password. The old password stops working the next time Stalwart starts.': 41,
-  'First, add a public domain under Services > Stalwart > Interfaces > Admin Console': 42,
-  'This server is ${hostname}, which cannot be changed from StartOS. If it is missing from the list, add it back under Services > Stalwart > Interfaces > Admin Console: click Add Domain and choose Public Domain.': 43,
-  'The hostname and email domain cannot be changed from StartOS once Stalwart is set up. To change them, use the Stalwart web console.': 44,
-  'Add ${hostname} back under Services > Stalwart > Interfaces > Admin Console: click Add Domain and choose Public Domain. Web console sign-in and certificate renewal need it.': 45,
+  'admin@ followed by your email domain': 42,
+  'Admin password': 43,
+  'The password of admin@ followed by your email domain. If you no longer have it, stop Stalwart and run Set Admin Password.': 44,
+  // utils.ts
+  'Incorrect password': 45,
+  // interfaces.ts
+  'JMAP, Calendars & Contacts': 46,
+  'Where JMAP mail clients and CalDAV, CardDAV and WebDAV calendar, contacts and file clients connect. Never serves the Admin Console or Account Manager.': 47,
+  "If you use (or plan to use) a StartTunnel gateway with this mail server, first open Services › Stalwart › Outbound Traffic and choose it as Stalwart's gateway, before you run this action. Otherwise Stalwart's outgoing mail and its Let's Encrypt certificate requests leave from your default internet connection's IP address.": 50,
 } as const
 
 /**

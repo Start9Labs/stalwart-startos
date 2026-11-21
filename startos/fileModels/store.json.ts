@@ -4,7 +4,8 @@ import { sdk } from '../sdk'
 const shape = z.looseObject({
   hostname: z.string().optional().catch(undefined),
   domain: z.string().optional().catch(undefined),
-  adminPassword: z.string().optional().catch(undefined),
+  adminPasswordSet: z.boolean().optional().catch(undefined),
+  adminPasswordHash: z.string().optional().catch(undefined),
 })
 
 export const storeJson = FileHelper.json(
