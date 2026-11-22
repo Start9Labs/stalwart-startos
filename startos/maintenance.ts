@@ -12,7 +12,7 @@ import {
   recoveryAdminUser,
 } from './utils'
 
-// Runs a Stalwart unreachable from outside the container, whose recovery admin exists only for this call.
+// Runs a Stalwart whose recovery admin, with a random single-use password, exists only for this call.
 // `normalMode` opens the configured listeners, so it disables every binding for the duration.
 export async function withMaintenanceStalwart(
   effects: T.Effects,

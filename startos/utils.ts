@@ -5,7 +5,7 @@ import { sdk } from './sdk'
 
 export const httpPort = 8080
 export const consolePort = 8081
-// Bound by no interface, so StartOS forwards nothing to it.
+// Bound by no interface, so StartOS forwards nothing to it; Stalwart listens on it at `[::]`.
 export const maintenancePort = 18080
 export const smtpPort = 25
 export const submissionsPort = 465
@@ -188,30 +188,49 @@ export async function separateConsoleListener(api: Api) {
   const listeners = await jmapQuery<{ name: string }>(api, 'NetworkListener', [
     'name',
   ])
-  await jmap(api, [
+  const [[, { list }]] = await jmap(api, [
     [
-      'x:Http/set',
-      {
-        update: {
-          singleton: {
-            allowedEndpoints: {
-              match: Object.fromEntries(
-                ['/admin', '/account'].map((path, i) => [
-                  i,
-                  {
-                    if: `local_port == ${httpPort} && starts_with(path, '${path}')`,
-                    then: '403',
-                  },
-                ]),
-              ),
-              else: '200',
+      'x:Http/get',
+      { ids: ['singleton'], properties: ['allowedEndpoints'] },
+      'g',
+    ],
+  ])
+  const [{ allowedEndpoints: current }] = list as {
+    allowedEndpoints: {
+      match: Record<string, { if: string; then: string }>
+      else: string
+    }
+  }[]
+  const existing = Object.entries(current.match)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([, r]) => r)
+  const ours = ['/admin', '/account'].map((path) => ({
+    if: `local_port == ${httpPort} && starts_with(path, '${path}')`,
+    then: '403',
+  }))
+  // First match wins, so the user's own rules go after ours.
+  const match = [
+    ...ours,
+    ...existing.filter((r) => !ours.some((o) => o.if === r.if)),
+  ]
+  if (JSON.stringify(match) !== JSON.stringify(existing)) {
+    await jmap(api, [
+      [
+        'x:Http/set',
+        {
+          update: {
+            singleton: {
+              allowedEndpoints: {
+                match: Object.fromEntries(match.map((r, i) => [i, r])),
+                else: current.else,
+              },
             },
           },
         },
-      },
-      'c1',
-    ],
-  ])
+        'c1',
+      ],
+    ])
+  }
   if (!listeners.some((l) => l.name === consoleListener)) {
     await jmap(api, [
       [
@@ -286,7 +305,7 @@ type Account = {
   domainId: string
   credentials: Record<string, { '@type': string }>
 }
-// Also clears the account's two-factor secret, so the new password alone signs in.
+// Also lifts every lockout Stalwart offers on the account and its password, so the new password alone signs in.
 export async function setAdminAccountPassword(api: Api, passwordHash: string) {
   const [[, { list }]] = await jmap(api, [
     [
@@ -315,17 +334,23 @@ export async function setAdminAccountPassword(api: Api, passwordHash: string) {
       admin
         ? {
             update: {
-              [admin.id]: key
-                ? {
-                    [`credentials/${key}/secret`]: passwordHash,
-                    [`credentials/${key}/otpUrl`]: null,
-                  }
-                : {
-                    [`credentials/${nextKey}`]: {
-                      '@type': 'Password',
-                      secret: passwordHash,
-                    },
-                  },
+              [admin.id]: {
+                roles: { '@type': 'Admin' },
+                permissions: { '@type': 'Inherit' },
+                ...(key
+                  ? {
+                      [`credentials/${key}/secret`]: passwordHash,
+                      [`credentials/${key}/otpUrl`]: null,
+                      [`credentials/${key}/expiresAt`]: null,
+                      [`credentials/${key}/allowedIps`]: {},
+                    }
+                  : {
+                      [`credentials/${nextKey}`]: {
+                        '@type': 'Password',
+                        secret: passwordHash,
+                      },
+                    }),
+              },
             },
           }
         : {
