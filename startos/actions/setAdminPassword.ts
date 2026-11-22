@@ -10,13 +10,13 @@ export const setAdminPassword = sdk.Action.withoutInput(
   async ({ effects }) => ({
     name: i18n('Set Admin Password'),
     description: i18n(
-      '<p>Generate a new random password for the Stalwart administrator account. It also turns off two-factor authentication on that account, so the new password alone signs in.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>',
+      '<p>Generate a new random password for the Stalwart administrator account, restore administrator privileges, and remove its two-factor authentication, password expiry and IP restrictions.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>',
     ),
     warning:
       [
         (await storeJson.read((s) => s.adminPasswordSet).const(effects)) &&
           i18n(
-            'Replaces the current admin password. The old password stops working the next time Stalwart starts.',
+            'Replaces the admin password, restores administrator privileges, and removes two-factor authentication, password expiry and IP restrictions. These changes take effect the next time Stalwart starts.',
           ),
         (await storeJson.read((s) => !!s.domain).const(effects)) &&
           (await configJson.read().const(effects)) === null &&

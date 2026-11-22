@@ -122,7 +122,7 @@ Users in the internal directory can manage passkeys under **Account > Credential
 
 ### Actions
 
-- **Set Admin Password** — generates a new password for `admin` in Stalwart's default email domain and shows it once. StartOS keeps only a hash of it, so save it in your password manager. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then. It also turns off two-factor authentication on that account, so the new password alone signs in.
+- **Set Admin Password** — generates a new password for `admin` in Stalwart's default email domain and shows it once. StartOS keeps only a hash of it, so save it in your password manager. Run it whenever you have lost the password. It takes effect the next time Stalwart starts, and the old password stops working then. It also restores administrator privileges and removes the account's two-factor authentication, password expiry and IP restrictions.
 - **Show DNS Records** — asks for the admin password, then lists the records to publish for each domain Stalwart hosts, and offers each domain's records as a zone file to download. If two-factor authentication is enabled for the admin account, enter an app password for that account instead of its main password. To create one, sign in to the Account Manager as `admin` and go to **Credentials › App Passwords › Create App Password**, then set **Permissions › Type** to **Same permissions as account**. An app password with **Replace all permissions** also works if its permissions include at least **"Sign in to the server"**, **"Query domains"** and **"Get domains"**. Run it after adding a domain, and again if you rotate DKIM keys.
 
 ## Limitations

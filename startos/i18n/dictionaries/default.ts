@@ -36,7 +36,7 @@ const dict = {
   'The hostname must be the email domain or a name under it': 28,
   // actions/setAdminPassword.ts
   'Set Admin Password': 29,
-  '<p>Generate a new random password for the Stalwart administrator account. It also turns off two-factor authentication on that account, so the new password alone signs in.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>': 30,
+  '<p>Generate a new random password for the Stalwart administrator account, restore administrator privileges, and remove its two-factor authentication, password expiry and IP restrictions.</p><p>This action can only run while Stalwart is stopped, so the server loads the new password the next time it starts.</p>': 30,
   'Stalwart Admin Credentials': 31,
   'Use these to sign in to the Stalwart web console. The password is shown only now.': 32,
   Username: 33,
@@ -48,7 +48,7 @@ const dict = {
   'Publish these records at your DNS provider.': 38,
   'Address records': 39,
   'No public address is enabled on the SMTP interface yet, so there is no address record to publish. Enable one, then run this again.': 40,
-  'Replaces the current admin password. The old password stops working the next time Stalwart starts.': 41,
+  'Replaces the admin password, restores administrator privileges, and removes two-factor authentication, password expiry and IP restrictions. These changes take effect the next time Stalwart starts.': 41,
   'Admin password': 43,
   'The password of the admin account. If two-factor authentication is enabled, use an app password for that account instead, created with Permissions › Type set to "Same permissions as account". If you no longer have access, stop Stalwart and run Set Admin Password.': 44,
   // utils.ts

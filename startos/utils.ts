@@ -305,6 +305,12 @@ type Account = {
   domainId: string
   credentials: Record<string, { '@type': string }>
 }
+
+const passwordCredentialKey = (account: Account | undefined) =>
+  Object.entries(account?.credentials ?? {}).find(
+    ([, credential]) => credential['@type'] === 'Password',
+  )?.[0]
+
 // Also lifts every lockout Stalwart offers on the account and its password, so the new password alone signs in.
 export async function setAdminAccountPassword(api: Api, passwordHash: string) {
   const [[, { list }]] = await jmap(api, [
@@ -316,18 +322,24 @@ export async function setAdminAccountPassword(api: Api, passwordHash: string) {
   ])
   // Stalwart resolves bare admin logins through its default domain.
   const [{ defaultDomainId: domainId }] = list as { defaultDomainId: string }[]
-  const [admin] = await jmapQuery<Account>(api, 'Account', undefined, {
-    '@type': 'User',
-    name: adminUser,
-    domainId,
-  })
+  const readAdmin = async (): Promise<Account | undefined> => {
+    const [account] = await jmapQuery<Account>(api, 'Account', undefined, {
+      '@type': 'User',
+      name: adminUser,
+      domainId,
+    })
+    return account
+  }
+  const admin = await readAdmin()
   const credentials = admin?.credentials ?? {}
-  const key = Object.entries(credentials).find(
-    ([, c]) => c['@type'] === 'Password',
-  )?.[0]
+  const key = passwordCredentialKey(admin)
   // Credential keys survive deletions.
   let nextKey = 0
   while (String(nextKey) in credentials) nextKey++
+  const adminAccess = {
+    roles: { '@type': 'Admin' },
+    permissions: { '@type': 'Inherit' },
+  }
   await jmap(api, [
     [
       'x:Account/set',
@@ -335,14 +347,10 @@ export async function setAdminAccountPassword(api: Api, passwordHash: string) {
         ? {
             update: {
               [admin.id]: {
-                roles: { '@type': 'Admin' },
-                permissions: { '@type': 'Inherit' },
+                ...adminAccess,
                 ...(key
                   ? {
                       [`credentials/${key}/secret`]: passwordHash,
-                      [`credentials/${key}/otpUrl`]: null,
-                      [`credentials/${key}/expiresAt`]: null,
-                      [`credentials/${key}/allowedIps`]: {},
                     }
                   : {
                       [`credentials/${nextKey}`]: {
@@ -359,7 +367,7 @@ export async function setAdminAccountPassword(api: Api, passwordHash: string) {
                 '@type': 'User',
                 name: adminUser,
                 domainId,
-                roles: { '@type': 'Admin' },
+                ...adminAccess,
                 description: 'System administrator',
                 credentials: {
                   0: { '@type': 'Password', secret: passwordHash },
@@ -367,6 +375,30 @@ export async function setAdminAccountPassword(api: Api, passwordHash: string) {
               },
             },
           },
+      'c1',
+    ],
+  ])
+
+  // Stalwart applies default expiry during credential creation.
+  const resetAdmin = key ? admin : await readAdmin()
+  const resetKey = key ?? passwordCredentialKey(resetAdmin)
+  if (!resetAdmin || !resetKey) {
+    throw new Error(
+      'Stalwart did not create the administrator password credential',
+    )
+  }
+  await jmap(api, [
+    [
+      'x:Account/set',
+      {
+        update: {
+          [resetAdmin.id]: {
+            [`credentials/${resetKey}/otpUrl`]: null,
+            [`credentials/${resetKey}/expiresAt`]: null,
+            [`credentials/${resetKey}/allowedIps`]: {},
+          },
+        },
+      },
       'c1',
     ],
   ])
