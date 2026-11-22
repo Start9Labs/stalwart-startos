@@ -1,8 +1,12 @@
 import { healthFns, T } from '@start9labs/start-sdk'
+import { pbkdf2Sync, randomBytes } from 'node:crypto'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 
 export const httpPort = 8080
+export const consolePort = 8081
+// Bound by no interface, so StartOS forwards nothing to it; Stalwart listens on it at `[::]`.
+export const maintenancePort = 18080
 export const smtpPort = 25
 export const submissionsPort = 465
 export const imapsPort = 993
@@ -23,7 +27,8 @@ export const stalwartUid = 2000
 // Volume subdirectory holding the 0.16 store and migration state the 1.0 migration left behind.
 export const legacyDir = 'v0.16'
 
-export const recoveryAdminUser = 'admin'
+export const recoveryAdminUser = 'stalwart-startos'
+export const adminUser = 'admin'
 
 export const mounts = sdk.Mounts.of()
   .mountVolume({
@@ -48,9 +53,11 @@ export const chownCommand = [
   `mkdir -p ${webuiDir} && chown -R ${stalwartUid}:${stalwartUid} ${etcDir} ${dataDir}`,
 ] as const satisfies [string, ...string[]]
 
-export async function checkLive(): Promise<healthFns.HealthCheckResult> {
+export async function checkLive(
+  port = httpPort,
+): Promise<healthFns.HealthCheckResult> {
   try {
-    const res = await fetch(`http://127.0.0.1:${httpPort}/healthz/live`, {
+    const res = await fetch(`http://127.0.0.1:${port}/healthz/live`, {
       signal: AbortSignal.timeout(5_000),
     })
     if (res.ok) return { result: 'success', message: i18n('Stalwart is ready') }
@@ -58,16 +65,27 @@ export async function checkLive(): Promise<healthFns.HealthCheckResult> {
   return { result: 'failure', message: i18n('Stalwart is not ready') }
 }
 
+const phcBase64 = (b: Buffer) => b.toString('base64').replace(/=+$/, '')
+
+export function hashPassword(password: string, rounds = 600_000) {
+  const salt = randomBytes(16)
+  const hash = pbkdf2Sync(password, salt, rounds, 32, 'sha256')
+  return `$pbkdf2-sha256$i=${rounds},l=32$${phcBase64(salt)}$${phcBase64(hash)}`
+}
+
 type JmapCall = [string, Record<string, unknown>, string]
 
+// `credentials` is `user:password`.
+export type Api = { port: number; credentials: string }
+
 export async function jmap(
-  adminPassword: string,
+  { port, credentials }: Api,
   methodCalls: JmapCall[],
 ): Promise<JmapCall[]> {
-  const res = await fetch(`http://127.0.0.1:${httpPort}/jmap/`, {
+  const res = await fetch(`http://127.0.0.1:${port}/jmap/`, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${Buffer.from(`${recoveryAdminUser}:${adminPassword}`).toString('base64')}`,
+      Authorization: `Basic ${Buffer.from(credentials).toString('base64')}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -75,6 +93,7 @@ export async function jmap(
       methodCalls,
     }),
   })
+  if (res.status === 401) throw new Error(i18n('Incorrect password'))
   if (!res.ok) throw new Error(`JMAP request failed: ${res.status}`)
   const { methodResponses } = (await res.json()) as {
     methodResponses: JmapCall[]
@@ -92,12 +111,13 @@ export async function jmap(
 
 // A `properties` list drops the `@type` discriminator, so variant objects are fetched whole.
 export async function jmapQuery<A>(
-  adminPassword: string,
+  api: Api,
   type: string,
   properties?: string[],
+  filter: Record<string, unknown> = {},
 ): Promise<A[]> {
-  const [, [, { list }]] = await jmap(adminPassword, [
-    [`x:${type}/query`, { filter: {} }, 'q'],
+  const [, [, { list }]] = await jmap(api, [
+    [`x:${type}/query`, { filter }, 'q'],
     [
       `x:${type}/get`,
       {
@@ -119,13 +139,10 @@ type Domain = {
   name: string
   certificateManagement: { '@type': string }
 }
-export async function armAcme(
-  adminPassword: string,
-  hostname: string,
-  domain: string,
-) {
+
+export async function armAcme(api: Api, hostname: string, domain: string) {
   const now = new Date()
-  const certs = await jmapQuery<Certificate>(adminPassword, 'Certificate', [
+  const certs = await jmapQuery<Certificate>(api, 'Certificate', [
     'subjectAlternativeNames',
     'notValidAfter',
   ])
@@ -137,15 +154,15 @@ export async function armAcme(
   ) {
     return
   }
-  const mailDomain = (
-    await jmapQuery<Domain>(adminPassword, 'Domain', [
-      'name',
-      'certificateManagement',
-    ])
-  ).find((d) => d.name === domain)
+  const [mailDomain] = await jmapQuery<Domain>(
+    api,
+    'Domain',
+    ['name', 'certificateManagement'],
+    { name: domain },
+  )
   if (mailDomain?.certificateManagement['@type'] !== 'Automatic') return
 
-  await jmap(adminPassword, [
+  await jmap(api, [
     [
       'x:Task/set',
       {
@@ -154,6 +171,231 @@ export async function armAcme(
             '@type': 'AcmeRenewal',
             domainId: mailDomain.id,
             status: { '@type': 'Pending', due: now.toISOString() },
+          },
+        },
+      },
+      'c1',
+    ],
+  ])
+}
+
+export const consoleClientId = 'startos-webui'
+
+const consoleListener = 'console'
+
+// Stalwart opens a new listener only on its next normal start.
+export async function separateConsoleListener(api: Api) {
+  const listeners = await jmapQuery<{ name: string }>(api, 'NetworkListener', [
+    'name',
+  ])
+  const [[, { list }]] = await jmap(api, [
+    [
+      'x:Http/get',
+      { ids: ['singleton'], properties: ['allowedEndpoints'] },
+      'g',
+    ],
+  ])
+  const [{ allowedEndpoints: current }] = list as {
+    allowedEndpoints: {
+      match: Record<string, { if: string; then: string }>
+      else: string
+    }
+  }[]
+  const existing = Object.entries(current.match)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([, r]) => r)
+  const ours = ['/admin', '/account'].map((path) => ({
+    if: `local_port == ${httpPort} && starts_with(path, '${path}')`,
+    then: '403',
+  }))
+  // First match wins, so the user's own rules go after ours.
+  const match = [
+    ...ours,
+    ...existing.filter((r) => !ours.some((o) => o.if === r.if)),
+  ]
+  if (JSON.stringify(match) !== JSON.stringify(existing)) {
+    await jmap(api, [
+      [
+        'x:Http/set',
+        {
+          update: {
+            singleton: {
+              allowedEndpoints: {
+                match: Object.fromEntries(match.map((r, i) => [i, r])),
+                else: current.else,
+              },
+            },
+          },
+        },
+        'c1',
+      ],
+    ])
+  }
+  if (!listeners.some((l) => l.name === consoleListener)) {
+    await jmap(api, [
+      [
+        'x:NetworkListener/set',
+        {
+          create: {
+            c: {
+              name: consoleListener,
+              protocol: 'http',
+              bind: { [`[::]:${consolePort}`]: true },
+            },
+          },
+        },
+        'c1',
+      ],
+    ])
+  }
+}
+
+export async function syncConsoleClient(api: Api, baseUrls: string[]) {
+  const uris = (path: string) =>
+    Object.fromEntries(baseUrls.map((b) => [`${b}${path}`, true]))
+  const fields = {
+    redirectUris: uris('oauth/callback'),
+    postLogoutRedirectUris: uris('login'),
+  }
+  const client = (
+    await jmapQuery<{ id: string; clientId: string }>(api, 'OAuthClient', [
+      'clientId',
+    ])
+  ).find((c) => c.clientId === consoleClientId)
+  await jmap(api, [
+    [
+      'x:OAuthClient/set',
+      client
+        ? { update: { [client.id]: fields } }
+        : {
+            create: {
+              c: {
+                clientId: consoleClientId,
+                description: 'Stalwart Web Interface (StartOS)',
+                grantTypes: { authorizationCode: true, refreshToken: true },
+                ...fields,
+              },
+            },
+          },
+      'c1',
+    ],
+  ])
+
+  const [webui] = await jmapQuery<{ id: string; oauthClientId: string | null }>(
+    api,
+    'Application',
+    ['oauthClientId'],
+  )
+  if (webui.oauthClientId !== consoleClientId) {
+    await jmap(api, [
+      [
+        'x:Application/set',
+        { update: { [webui.id]: { oauthClientId: consoleClientId } } },
+        'c1',
+      ],
+      ['x:Action/set', { create: { reload: { '@type': 'UpdateApps' } } }, 'c2'],
+    ])
+  }
+}
+
+type Account = {
+  id: string
+  '@type': string
+  name: string
+  domainId: string
+  credentials: Record<string, { '@type': string }>
+}
+
+const passwordCredentialKey = (account: Account | undefined) =>
+  Object.entries(account?.credentials ?? {}).find(
+    ([, credential]) => credential['@type'] === 'Password',
+  )?.[0]
+
+// Also lifts every lockout Stalwart offers on the account and its password, so the new password alone signs in.
+export async function setAdminAccountPassword(api: Api, passwordHash: string) {
+  const [[, { list }]] = await jmap(api, [
+    [
+      'x:SystemSettings/get',
+      { ids: ['singleton'], properties: ['defaultDomainId'] },
+      'g',
+    ],
+  ])
+  // Stalwart resolves bare admin logins through its default domain.
+  const [{ defaultDomainId: domainId }] = list as { defaultDomainId: string }[]
+  const readAdmin = async (): Promise<Account | undefined> => {
+    const [account] = await jmapQuery<Account>(api, 'Account', undefined, {
+      '@type': 'User',
+      name: adminUser,
+      domainId,
+    })
+    return account
+  }
+  const admin = await readAdmin()
+  const credentials = admin?.credentials ?? {}
+  const key = passwordCredentialKey(admin)
+  // Credential keys survive deletions.
+  let nextKey = 0
+  while (String(nextKey) in credentials) nextKey++
+  const adminAccess = {
+    roles: { '@type': 'Admin' },
+    permissions: { '@type': 'Inherit' },
+  }
+  await jmap(api, [
+    [
+      'x:Account/set',
+      admin
+        ? {
+            update: {
+              [admin.id]: {
+                ...adminAccess,
+                ...(key
+                  ? {
+                      [`credentials/${key}/secret`]: passwordHash,
+                    }
+                  : {
+                      [`credentials/${nextKey}`]: {
+                        '@type': 'Password',
+                        secret: passwordHash,
+                      },
+                    }),
+              },
+            },
+          }
+        : {
+            create: {
+              a: {
+                '@type': 'User',
+                name: adminUser,
+                domainId,
+                ...adminAccess,
+                description: 'System administrator',
+                credentials: {
+                  0: { '@type': 'Password', secret: passwordHash },
+                },
+              },
+            },
+          },
+      'c1',
+    ],
+  ])
+
+  // Stalwart applies default expiry during credential creation.
+  const resetAdmin = key ? admin : await readAdmin()
+  const resetKey = key ?? passwordCredentialKey(resetAdmin)
+  if (!resetAdmin || !resetKey) {
+    throw new Error(
+      'Stalwart did not create the administrator password credential',
+    )
+  }
+  await jmap(api, [
+    [
+      'x:Account/set',
+      {
+        update: {
+          [resetAdmin.id]: {
+            [`credentials/${resetKey}/otpUrl`]: null,
+            [`credentials/${resetKey}/expiresAt`]: null,
+            [`credentials/${resetKey}/allowedIps`]: {},
           },
         },
       },

@@ -1,53 +1,72 @@
 import { configJson, storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
+import { consoleBaseUrls } from './interfaces'
+import { withMaintenanceStalwart } from './maintenance'
 import { sdk } from './sdk'
 import {
   armAcme,
   checkLive,
-  chownCommand,
   getStalwartSub,
-  recoveryAdminUser,
+  separateConsoleListener,
+  setAdminAccountPassword,
+  syncConsoleClient,
 } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting Stalwart!'))
 
-  const store = await storeJson.read().const(effects)
+  const store = await storeJson
+    .read(({ hostname, domain, adminPasswordSet }) => ({
+      hostname,
+      domain,
+      adminPasswordSet,
+    }))
+    .const(effects)
   if (
-    !store?.adminPassword ||
+    !store?.adminPasswordSet ||
     !store.hostname ||
     !store.domain ||
     (await configJson.read().once()) === null
   ) {
     throw new Error(i18n('Stalwart has not been set up yet'))
   }
-  const { adminPassword, hostname, domain } = store
+  const { hostname, domain } = store
 
-  return sdk.Daemons.of(effects)
-    .addOneshot('chown', {
-      subcontainer: getStalwartSub(effects, 'stalwart-chown'),
-      exec: { command: chownCommand, user: 'root' },
-      requires: [],
-    })
-    .addDaemon('stalwart', {
-      subcontainer: getStalwartSub(effects, 'stalwart-sub'),
-      exec: {
-        command: sdk.useEntrypoint(),
-        env: {
-          STALWART_RECOVERY_ADMIN: `${recoveryAdminUser}:${adminPassword}`,
+  return sdk.Daemons.dynamic(effects, async ({ effects: runEffects }) => {
+    const baseUrls = (await consoleBaseUrls(runEffects).const()) ?? []
+
+    return sdk.Daemons.of(runEffects)
+      .addOneshot('maintenance', {
+        subcontainer: null,
+        exec: {
+          fn: async () => {
+            // Subcontainers die with the context that made them, and a re-run replaces runEffects.
+            await withMaintenanceStalwart(
+              effects,
+              'maintenance',
+              async (api) => {
+                const { adminPasswordHash, ...rest } =
+                  (await storeJson.read().once()) ?? {}
+                if (adminPasswordHash) {
+                  await setAdminAccountPassword(api, adminPasswordHash)
+                  await storeJson.write(effects, rest)
+                }
+                await separateConsoleListener(api)
+                await armAcme(api, hostname, domain)
+                await syncConsoleClient(api, baseUrls)
+              },
+            )
+            return null
+          },
         },
-      },
-      ready: { display: i18n('Mail Server'), fn: checkLive },
-      requires: ['chown'],
-    })
-    .addOneshot('acme', {
-      subcontainer: null,
-      exec: {
-        fn: async () => {
-          await armAcme(adminPassword, hostname, domain)
-          return null
-        },
-      },
-      requires: ['stalwart'],
-    })
+        uses: baseUrls,
+        requires: [],
+      })
+      .addDaemon('stalwart', {
+        subcontainer: getStalwartSub(runEffects, 'stalwart-sub'),
+        exec: { command: sdk.useEntrypoint() },
+        ready: { display: i18n('Mail Server'), fn: checkLive },
+        requires: ['maintenance'],
+      })
+  })
 })

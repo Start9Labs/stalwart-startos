@@ -1,51 +1,68 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
+import { storeJson } from '../fileModels/store.json'
+import { hashPassword } from '../utils'
 
 export const current = VersionInfo.of({
-  version: '1.1.1:0',
+  version: '1.1.1:1',
   releaseNotes: {
-    en_US: `Updated Stalwart to 1.1.1.
+    en_US: `The Admin Console and Account Manager now accept sign-in at every HTTPS address enabled on their interfaces, including the server's \`.local\`, LAN IP and HTTPS \`.onion\` addresses. Enable or disable addresses on the Interfaces tab to choose where sign-in works. Enabling or disabling a sign-in address restarts Stalwart, which interrupts mail for a few seconds.
 
-- New: masked email addresses no longer require an Enterprise license.
-- Action required: if you manage DNS through Netcup, enter your Netcup CloudDNS API key in the new API key field of that DNS provider in the Admin Console. Only CloudDNS domains are supported.
-- Fixes for IMAP clients that could skip newly delivered messages, Sieve sub-address matching, calendar invitations and recurring events, and concurrent WebDAV uploads.
-- Security: hardened IMAP against memory exhaustion before login, and files shared over WebDAV can no longer run scripts in the browser.
+- Your admin username (\`admin\`) and password are unchanged. They now sign in to the administrator account in Stalwart's default email domain.
+- Set Admin Password also restores administrator privileges and removes two-factor authentication, password expiry and IP restrictions on that account.
+- StartOS keeps only a hash of your admin password. Save the password Set Admin Password shows you.
+- Show DNS Records asks for your admin password.
+- The Admin Console and Account Manager move to their own addresses, on port 8443, and never appear on your public domain at port 443. Update your bookmarks.
+- A new JMAP, Calendars & Contacts interface shows where mail, calendar and contacts apps connect.`,
+    es_ES: `La consola de administración y el gestor de cuentas ahora permiten iniciar sesión en todas las direcciones HTTPS habilitadas en sus interfaces, incluidas las direcciones \`.local\`, IP de la LAN y \`.onion\` HTTPS del servidor. Habilita o deshabilita direcciones en la pestaña Interfaces para elegir dónde se puede iniciar sesión. Habilitar o deshabilitar una dirección de inicio de sesión reinicia Stalwart, lo que interrumpe el correo unos segundos.
 
-[Full release notes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
-    es_ES: `Stalwart actualizado a 1.1.1.
+- Tu nombre de usuario de administrador (\`admin\`) y contraseña no cambian. Ahora inician sesión en la cuenta de administrador del dominio de correo predeterminado de Stalwart.
+- Establecer contraseña de administrador también restaura los privilegios de administrador y elimina la autenticación en dos pasos, la caducidad de la contraseña y las restricciones de IP de esa cuenta.
+- StartOS solo guarda un hash de tu contraseña de administrador. Guarda la contraseña que te muestra Establecer contraseña de administrador.
+- Mostrar registros DNS pide tu contraseña de administrador.
+- La consola de administración y el gestor de cuentas pasan a tener sus propias direcciones, en el puerto 8443, y nunca aparecen en tu dominio público en el puerto 443. Actualiza tus marcadores.
+- La nueva interfaz JMAP, calendarios y contactos muestra dónde se conectan las aplicaciones de correo, calendario y contactos.`,
+    de_DE: `Die Admin-Konsole und die Kontoverwaltung akzeptieren die Anmeldung jetzt an jeder HTTPS-Adresse, die auf ihren Schnittstellen aktiviert ist, einschließlich der \`.local\`-Adresse, der LAN-IP und der HTTPS-\`.onion\`-Adresse des Servers. Aktiviere oder deaktiviere Adressen im Tab Schnittstellen, um festzulegen, wo die Anmeldung funktioniert. Das Aktivieren oder Deaktivieren einer Anmeldeadresse startet Stalwart neu und unterbricht den Mailverkehr für einige Sekunden.
 
-- Nuevo: las direcciones de correo enmascaradas ya no requieren una licencia Enterprise.
-- Acción necesaria: si gestionas el DNS con Netcup, introduce tu clave de API de Netcup CloudDNS en el nuevo campo de clave de API de ese proveedor DNS en la consola de administración. Solo se admiten dominios CloudDNS.
-- Correcciones para clientes IMAP que podían omitir mensajes recién entregados, la coincidencia de subdirecciones en Sieve, invitaciones de calendario y eventos recurrentes, y subidas WebDAV simultáneas.
-- Seguridad: IMAP reforzado contra el agotamiento de memoria antes del inicio de sesión, y los archivos compartidos por WebDAV ya no pueden ejecutar scripts en el navegador.
+- Dein Administrator-Benutzername (\`admin\`) und -Passwort bleiben unverändert. Sie melden jetzt am Administratorkonto in Stalwarts Standard-E-Mail-Domain an.
+- Administratorpasswort festlegen stellt außerdem Administratorrechte wieder her und entfernt Zwei-Faktor-Authentifizierung, Passwortablauf und IP-Beschränkungen dieses Kontos.
+- StartOS speichert nur einen Hash deines Administratorpassworts. Bewahre das Passwort auf, das dir Administratorpasswort festlegen anzeigt.
+- DNS-Einträge anzeigen fragt nach deinem Administratorpasswort.
+- Die Admin-Konsole und die Kontoverwaltung erhalten eigene Adressen auf Port 8443 und erscheinen nie auf deiner öffentlichen Domain an Port 443. Aktualisiere deine Lesezeichen.
+- Die neue Schnittstelle JMAP, Kalender & Kontakte zeigt, wo sich Mail-, Kalender- und Kontakt-Apps verbinden.`,
+    pl_PL: `Konsola administracyjna i menedżer kont pozwalają teraz zalogować się pod każdym adresem HTTPS włączonym na ich interfejsach, w tym pod adresem \`.local\`, adresem IP w sieci LAN i adresem \`.onion\` HTTPS serwera. Włączaj lub wyłączaj adresy na karcie Interfejsy, aby wybrać, gdzie można się zalogować. Włączenie lub wyłączenie adresu logowania uruchamia Stalwart ponownie, co na kilka sekund przerywa obsługę poczty.
 
-[Notas de la versión completas](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
-    de_DE: `Stalwart auf 1.1.1 aktualisiert.
+- Nazwa użytkownika administratora (\`admin\`) i hasło się nie zmieniają. Logują teraz do konta administratora w domyślnej domenie poczty Stalwart.
+- Ustaw hasło administratora przywraca też uprawnienia administratora i usuwa uwierzytelnianie dwuskładnikowe, termin ważności hasła oraz ograniczenia IP tego konta.
+- StartOS przechowuje tylko skrót hasła administratora. Zapisz hasło, które pokazuje Ustaw hasło administratora.
+- Pokaż rekordy DNS prosi o hasło administratora.
+- Konsola administracyjna i menedżer kont mają teraz własne adresy, na porcie 8443, i nigdy nie pojawiają się w Twojej domenie publicznej na porcie 443. Zaktualizuj zakładki.
+- Nowy interfejs JMAP, kalendarze i kontakty pokazuje, gdzie łączą się aplikacje poczty, kalendarza i kontaktów.`,
+    fr_FR: `La console d'administration et le gestionnaire de comptes acceptent désormais la connexion à chaque adresse HTTPS activée sur leurs interfaces, y compris les adresses \`.local\`, IP du réseau local et \`.onion\` HTTPS du serveur. Activez ou désactivez des adresses dans l'onglet Interfaces pour choisir où la connexion fonctionne. Activer ou désactiver une adresse de connexion redémarre Stalwart, ce qui interrompt le courrier pendant quelques secondes.
 
-- Neu: Maskierte E-Mail-Adressen erfordern keine Enterprise-Lizenz mehr.
-- Handlungsbedarf: Wenn du DNS über Netcup verwaltest, trage in der Admin-Konsole deinen Netcup-CloudDNS-API-Schlüssel in das neue API-Schlüssel-Feld dieses DNS-Anbieters ein. Unterstützt werden nur CloudDNS-Domains.
-- Korrekturen für IMAP-Clients, die neu zugestellte Nachrichten überspringen konnten, für Sieve-Subadressen, Kalendereinladungen und wiederkehrende Termine sowie für gleichzeitige WebDAV-Uploads.
-- Sicherheit: IMAP gegen Speichererschöpfung vor der Anmeldung gehärtet, und über WebDAV geteilte Dateien können im Browser keine Skripte mehr ausführen.
-
-[Vollständige Versionshinweise](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
-    pl_PL: `Zaktualizowano Stalwart do wersji 1.1.1.
-
-- Nowość: maskowane adresy e-mail nie wymagają już licencji Enterprise.
-- Wymagane działanie: jeśli zarządzasz DNS przez Netcup, wpisz klucz API Netcup CloudDNS w nowym polu klucza API tego dostawcy DNS w konsoli administracyjnej. Obsługiwane są tylko domeny CloudDNS.
-- Poprawki dla klientów IMAP, którzy mogli pomijać nowo dostarczone wiadomości, dopasowywania podadresów w Sieve, zaproszeń kalendarza i wydarzeń cyklicznych oraz równoczesnych przesyłań WebDAV.
-- Bezpieczeństwo: wzmocniono IMAP przed wyczerpaniem pamięci przed zalogowaniem, a pliki udostępniane przez WebDAV nie mogą już uruchamiać skryptów w przeglądarce.
-
-[Pełne informacje o wydaniu](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
-    fr_FR: `Stalwart mis à jour vers 1.1.1.
-
-- Nouveau : les adresses e-mail masquées ne nécessitent plus de licence Enterprise.
-- Action requise : si vous gérez votre DNS avec Netcup, saisissez votre clé d'API Netcup CloudDNS dans le nouveau champ de clé d'API de ce fournisseur DNS dans la console d'administration. Seuls les domaines CloudDNS sont pris en charge.
-- Corrections pour les clients IMAP qui pouvaient ignorer des messages nouvellement distribués, la correspondance des sous-adresses dans Sieve, les invitations de calendrier et les événements récurrents, et les envois WebDAV simultanés.
-- Sécurité : IMAP renforcé contre l'épuisement de la mémoire avant la connexion, et les fichiers partagés via WebDAV ne peuvent plus exécuter de scripts dans le navigateur.
-
-[Notes de version complètes](https://github.com/stalwartlabs/stalwart/releases/tag/v1.1.1)`,
+- Votre nom d'utilisateur administrateur (\`admin\`) et votre mot de passe ne changent pas. Ils connectent désormais au compte administrateur du domaine de messagerie par défaut de Stalwart.
+- Définir le mot de passe administrateur rétablit aussi les droits d'administration et supprime l'authentification à deux facteurs, l'expiration du mot de passe et les restrictions IP de ce compte.
+- StartOS ne conserve qu’une empreinte de votre mot de passe administrateur. Conservez le mot de passe que vous montre Définir le mot de passe administrateur.
+- Afficher les enregistrements DNS demande votre mot de passe administrateur.
+- La console d'administration et le gestionnaire de comptes ont désormais leurs propres adresses, sur le port 8443, et n'apparaissent jamais sur votre domaine public au port 443. Mettez à jour vos favoris.
+- La nouvelle interface JMAP, calendriers et contacts indique où se connectent les applications de messagerie, de calendrier et de contacts.`,
   },
   migrations: {
-    up: async () => {},
+    up: async ({ effects }) => {
+      const store = await storeJson.read().once()
+      if (!store) return
+      const { adminPassword, recoveryPassword, adminPasswordSynced, ...rest } =
+        store
+      await storeJson.write(
+        effects,
+        typeof adminPassword === 'string'
+          ? {
+              ...rest,
+              adminPasswordSet: true,
+              adminPasswordHash: hashPassword(adminPassword),
+            }
+          : rest,
+      )
+    },
     down: IMPOSSIBLE,
   },
 })

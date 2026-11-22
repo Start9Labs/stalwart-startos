@@ -34,13 +34,18 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Don't replace `STALWART_RECOVERY_ADMIN` with the `admin@<domain>` account bootstrap creates, and don't add a "show password" action** — it is the one credential that bypasses the account directory, so `set-admin-password` can always get the user back in.
-- **Keep `setup`'s hostname a choice among the `admin` interface's public domains, never free text** — Stalwart lets the console sign in only at that hostname, so a hostname that StartOS does not route to Stalwart leaves the console unusable.
+- **Make the package's own JMAP calls only inside `withMaintenanceStalwart`, and never persist, log or pass on its password** — that run is the only time a recovery admin exists, and its random password is all that guards it: Stalwart binds the recovery listener to `[::]`, so other services on the server can reach port 18080.
+- **Keep every maintenance run but the second bootstrap run in recovery mode; don't call `clearBindings` from `main`** — disabling a binding withdraws its onion and I2P addresses, which changes the console's redirect list and re-runs the maintenance in a loop.
+- **Never store the admin password, only `adminPasswordHash`, and delete the hash once the maintenance run has applied it** — reapplying it on every start would clear the account's two-factor secret and end its sessions each time.
+- **Actions that need the API ask the user for the admin password** — the package holds no credential while Stalwart serves.
+- **Read the console's addresses inside `Daemons.dynamic` and hand them to the `maintenance` oneshot through `uses`, never with `.const()` in `setupMain`'s outer scope** — the outer scope would tear down the whole daemon set instead of re-running the maintenance and restarting Stalwart.
+- **Keep `admin` and `account` on the 8081 binding and `jmap-dav` on 8080, and keep the `allowedEndpoints` rule keyed on local port 8080** — only the 8080 binding holds 443, which `.well-known`, autoconfig and Stalwart's HTTP-01 challenge need, and the rule is what keeps the console's pages off the public domain.
+- **Build the console OAuth client's redirect URIs only from the `admin` and `account` interfaces' enabled HTTPS addresses** — that list is the user's control over where the console accepts sign-in.
 - **Gate bootstrap on `etc/config.json` being absent, never on `kind === 'install'`** — the hostname, domain and password arrive from actions after install.
 - **Don't set `STALWART_PUBLIC_URL` to make the console log in** — it would pin JMAP/OIDC discovery to one address for every mail client.
 - **Keep every mail port a plain DNAT binding (`secure: { ssl: false }`); don't move one to `addSsl` or passthrough (`ssl: true`)** — termination makes every mail client look like the proxy to Stalwart's rate limiting and auto-ban, and passthrough's SNI listener refuses names not enabled on each mail port.
 - **Change a published port (2525, 10465, 10993, 14190) only together with the table in `instructions.md`** — the user maps the standard ports to them once on their gateway.
 - **Keep the second bootstrap run a normal-mode start, not recovery mode** — only a normal start provisions the default listeners, including the `pop3s` one bootstrap deletes.
-- **Don't drop the `acme` oneshot in `main` or gate it on install** — Stalwart backs its own retries off exponentially and never reschedules a locked or failed renewal, so the oneshot is what makes a restart retry issuance at once.
-- **Keep that oneshot creating the `AcmeRenewal` singleton, not destroying and recreating it** — upstream forbids destroying an automatic domain's renewal task.
+- **Don't drop `armAcme` from the maintenance run in `main` or gate it on install** — Stalwart backs its own retries off exponentially and never reschedules a locked or failed renewal, so `armAcme` is what makes a restart retry issuance at once.
+- **Keep `armAcme` creating the `AcmeRenewal` singleton, not destroying and recreating it** — upstream forbids destroying an automatic domain's renewal task.
 - **Don't drop or lower the `0.16.27:0` floor in `startos/versions/`** — `stalwart-migrate` reads only 0.16.27 stores, and the floor is what makes StartOS route older 0.16 installs through 0.16.27:1.

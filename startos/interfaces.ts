@@ -1,8 +1,8 @@
 import { T } from '@start9labs/start-sdk'
-import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
+  consolePort,
   httpPort,
   imapsExternalPort,
   imapsPort,
@@ -15,31 +15,49 @@ import {
 } from './utils'
 
 export const hostId = 'mail'
-const adminInterfaceId = 'admin'
+const consolePaths: Record<string, string> = {
+  admin: '/admin/',
+  account: '/account/',
+}
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
-  const hostname = await storeJson.read((s) => s.hostname).const(effects)
-  const preferredLauncherAddress = hostname ? `https://${hostname}` : null
-
   const mail = sdk.MultiHost.of(effects, hostId)
 
   const web = await mail.bindPort(httpPort, {
     protocol: 'http',
     preferredExternalPort: 80,
   })
+  const jmapDav = sdk.createInterface(effects, {
+    name: i18n('JMAP, Calendars & Contacts'),
+    id: 'jmap-dav',
+    description: i18n(
+      'Where JMAP mail clients and CalDAV, CardDAV and WebDAV calendar, contacts and file clients connect. Never serves the Admin Console or Account Manager.',
+    ),
+    type: 'api',
+    masked: false,
+    schemeOverride: null,
+    username: null,
+    path: '',
+    query: {},
+  })
+
+  const consoleWeb = await mail.bindPort(consolePort, {
+    protocol: 'http',
+    preferredExternalPort: consolePort,
+    addSsl: { preferredExternalPort: 8443 },
+  })
   const admin = sdk.createInterface(effects, {
     name: i18n('Admin Console'),
-    id: adminInterfaceId,
+    id: 'admin',
     description: i18n(
-      'Web console for managing domains, accounts and server settings. Also serves JMAP, CalDAV, CardDAV, WebDAV and mail client autoconfiguration.',
+      'Web console for managing domains, accounts and server settings. Shares its addresses with the Account Manager.',
     ),
     type: 'ui',
     masked: false,
     schemeOverride: null,
     username: null,
-    path: '/admin/',
+    path: consolePaths.admin,
     query: {},
-    preferredLauncherAddress,
   })
   const account = sdk.createInterface(effects, {
     name: i18n('Account Manager'),
@@ -51,9 +69,8 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     masked: false,
     schemeOverride: null,
     username: null,
-    path: '/account/',
+    path: consolePaths.account,
     query: {},
-    preferredLauncherAddress,
   })
 
   const smtp = await mail.bindPort(smtpPort, {
@@ -137,7 +154,8 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   })
 
   return [
-    await web.export([admin, account]),
+    await web.export([jmapDav]),
+    await consoleWeb.export([admin, account]),
     await smtp.export([smtpInterface]),
     await submissions.export([submissionsInterface]),
     await imaps.export([imapsInterface]),
@@ -145,20 +163,17 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   ]
 })
 
-export const adminPublicDomains = (effects: T.Effects) =>
-  sdk.host.getOwn(effects, hostId, (host) => {
-    const admin =
-      host &&
-      Object.values(host.bindings)
-        .flatMap((b) => Object.values(b.interfaces))
-        .find((i) => i.id === adminInterfaceId)
-    return admin
-      ? [
-          ...new Set(
-            admin.addressInfo
-              .filter({ kind: 'domain', visibility: 'public' })
-              .hostnames.map((h) => h.hostname),
-          ),
-        ]
-      : []
-  })
+export const consoleBaseUrls = (effects: T.Effects) =>
+  sdk.host.getOwn(effects, hostId, (host) =>
+    Object.values(host?.bindings ?? {})
+      .flatMap((b) => Object.values(b.interfaces))
+      .flatMap((i) =>
+        i.id in consolePaths
+          ? i.addressInfo.nonLocal
+              .filter({ predicate: (h) => h.ssl })
+              .format('url')
+              .map((u) => `${u.origin}${consolePaths[i.id]}`)
+          : [],
+      )
+      .sort(),
+  )
