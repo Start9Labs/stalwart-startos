@@ -6,6 +6,7 @@ const shape = z.looseObject({
   domain: z.string().optional().catch(undefined),
   adminPasswordSet: z.boolean().optional().catch(undefined),
   adminPasswordHash: z.string().optional().catch(undefined),
+  bootstrapped: z.boolean().optional().catch(undefined),
 })
 
 export const storeJson = FileHelper.json(
