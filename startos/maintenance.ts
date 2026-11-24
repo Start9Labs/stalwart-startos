@@ -18,7 +18,10 @@ export async function withMaintenanceStalwart(
   effects: T.Effects,
   id: string,
   fn: (api: Api) => Promise<unknown>,
-  { normalMode = false } = {},
+  {
+    normalMode = false,
+    env = {},
+  }: { normalMode?: boolean; env?: Record<string, string> } = {},
 ) {
   const password = utils.getDefaultString({
     charset: 'a-z,A-Z,0-9',
@@ -42,6 +45,7 @@ export async function withMaintenanceStalwart(
             STALWART_RECOVERY_ADMIN: `${recoveryAdminUser}:${hashPassword(password, 1000)}`,
             STALWART_RECOVERY_MODE_PORT: String(maintenancePort),
             ...(!normalMode && { STALWART_RECOVERY_MODE: '1' }),
+            ...env,
           },
         },
         ready: { display: null, fn: () => checkLive(port) },
