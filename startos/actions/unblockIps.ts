@@ -86,15 +86,14 @@ export const unblockIps = sdk.Action.withInput(
         ],
       ])
     }
-    if (selected.length) {
-      await jmap(api, [
-        [
-          'x:Action/set',
-          { create: { reload: { '@type': 'ReloadBlockedIps' } } },
-          'r',
-        ],
-      ])
-    }
+    // A failed reload can leave deleted records banned in memory.
+    await jmap(api, [
+      [
+        'x:Action/set',
+        { create: { reload: { '@type': 'ReloadBlockedIps' } } },
+        'r',
+      ],
+    ])
 
     const reasons: Record<string, string> = {
       rcptToFailure: i18n('invalid recipients'),
