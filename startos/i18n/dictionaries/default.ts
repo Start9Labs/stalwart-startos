@@ -57,6 +57,22 @@ const dict = {
   'JMAP, Calendars & Contacts': 46,
   'Where JMAP mail clients and CalDAV, CardDAV and WebDAV calendar, contacts and file clients connect. Never serves the Admin Console or Account Manager.': 47,
   "If you use (or plan to use) a StartTunnel gateway with this mail server, first open Services › Stalwart › Outbound Traffic and choose it as Stalwart's gateway, before you run this action. Otherwise Stalwart's outgoing mail and its Let's Encrypt certificate requests leave from your default internet connection's IP address.": 50,
+  // actions/unblockIps.ts
+  'Addresses to unblock': 51,
+  'IP addresses or networks exactly as Stalwart blocked them. Leave the list empty to unblock every address.': 52,
+  'Unblock IP Addresses': 53,
+  'Remove addresses that Stalwart has blocked, for example after too many failed sign-ins, so they can connect again.': 54,
+  'These addresses can connect again.': 55,
+  'None of these addresses is blocked.': 56,
+  'No address is blocked.': 57,
+  'Not blocked': 58,
+  Unblocked: 59,
+  'invalid recipients': 60,
+  'failed sign-ins': 61,
+  'idle connections': 62,
+  'port scanning': 63,
+  'blocked by an administrator': 64,
+  other: 65,
 } as const
 
 /**
