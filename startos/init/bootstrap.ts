@@ -6,33 +6,41 @@ import { Api, consoleClientId, jmap, jmapQuery, webuiDir } from '../utils'
 
 export const bootstrap = sdk.setupOnInit(async (effects, _kind, progress) => {
   const store = await storeJson.read().const(effects)
-  if (!store?.hostname || !store.domain || !store.adminPasswordSet) return
-  if ((await configJson.read().once()) !== null) return
+  if (
+    !store?.hostname ||
+    !store.domain ||
+    !store.adminPasswordSet ||
+    store.bootstrapped
+  ) {
+    return
+  }
   const { hostname, domain } = store
 
   const phase = progress.addPhase(i18n('Configuring Stalwart'))
   phase.start()
 
-  await withMaintenanceStalwart(effects, 'bootstrap', (api) =>
-    jmap(api, [
-      [
-        'x:Bootstrap/set',
-        {
-          update: {
-            singleton: {
-              defaultHostname: hostname,
-              defaultDomain: domain,
-              requestTlsCertificate: false,
-              generateDkimKeys: true,
-              tracer: { '@type': 'Stdout', events: {} },
-              dnsServer: { '@type': 'Manual' },
+  if ((await configJson.read().once()) === null) {
+    await withMaintenanceStalwart(effects, 'bootstrap', (api) =>
+      jmap(api, [
+        [
+          'x:Bootstrap/set',
+          {
+            update: {
+              singleton: {
+                defaultHostname: hostname,
+                defaultDomain: domain,
+                requestTlsCertificate: false,
+                generateDkimKeys: true,
+                tracer: { '@type': 'Stdout', events: {} },
+                dnsServer: { '@type': 'Manual' },
+              },
             },
           },
-        },
-        'c1',
-      ],
-    ]),
-  )
+          'c1',
+        ],
+      ]),
+    )
+  }
 
   await withMaintenanceStalwart(
     effects,
@@ -40,11 +48,12 @@ export const bootstrap = sdk.setupOnInit(async (effects, _kind, progress) => {
     (api) => configure(api, hostname, domain),
     { normalMode: true },
   )
+  await storeJson.merge(effects, { bootstrapped: true })
 
   phase.complete()
 })
 
-async function configure(api: Api, hostname: string, domain: string) {
+export async function configure(api: Api, hostname: string, domain: string) {
   const [webui] = await jmapQuery<{ id: string }>(api, 'Application', ['id'])
   const pop3s = (
     await jmapQuery<{ id: string; name: string }>(api, 'NetworkListener', [
@@ -81,21 +90,32 @@ async function configure(api: Api, hostname: string, domain: string) {
   if (pop3s) {
     await jmap(api, [['x:NetworkListener/set', { destroy: [pop3s.id] }, 'c1']])
   }
-  const [[, { created }]] = (await jmap(api, [
-    [
-      'x:AcmeProvider/set',
-      {
-        create: {
-          acme: {
-            description: "Let's Encrypt",
-            challengeType: 'Http01',
-            contact: { [`postmaster@${domain}`]: true },
+  const acmeDescription = "Let's Encrypt"
+  const acmeProviderId =
+    (
+      await jmapQuery<{ id: string; description: string }>(
+        api,
+        'AcmeProvider',
+        ['description'],
+      )
+    ).find((p) => p.description === acmeDescription)?.id ??
+    (
+      (await jmap(api, [
+        [
+          'x:AcmeProvider/set',
+          {
+            create: {
+              acme: {
+                description: acmeDescription,
+                challengeType: 'Http01',
+                contact: { [`postmaster@${domain}`]: true },
+              },
+            },
           },
-        },
-      },
-      'c1',
-    ],
-  ])) as [[string, { created: { acme: { id: string } } }, string]]
+          'c1',
+        ],
+      ])) as [[string, { created: { acme: { id: string } } }, string]]
+    )[0][1].created.acme.id
   await jmap(api, [
     [
       'x:Domain/set',
@@ -104,7 +124,7 @@ async function configure(api: Api, hostname: string, domain: string) {
           [mailDomain.id]: {
             certificateManagement: {
               '@type': 'Automatic',
-              acmeProviderId: created.acme.id,
+              acmeProviderId,
               subjectAlternativeNames: { [san]: true },
             },
           },

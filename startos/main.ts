@@ -1,4 +1,4 @@
-import { configJson, storeJson } from './fileModels/store.json'
+import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { consoleBaseUrls } from './interfaces'
 import { withMaintenanceStalwart } from './maintenance'
@@ -22,17 +22,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
       adminPasswordSet,
     }))
     .const(effects)
-  if (
-    !store?.adminPasswordSet ||
-    !store.hostname ||
-    !store.domain ||
-    (await configJson.read().once()) === null
-  ) {
+  if (!store?.adminPasswordSet || !store.hostname || !store.domain) {
     throw new Error(i18n('Stalwart has not been set up yet'))
   }
   const { hostname, domain } = store
 
   return sdk.Daemons.dynamic(effects, async ({ effects: runEffects }) => {
+    if (!(await storeJson.read((s) => s.bootstrapped).const(runEffects))) {
+      return sdk.Daemons.of(runEffects).addHealthCheck('stalwart', {
+        ready: {
+          display: i18n('Mail Server'),
+          fn: () => ({
+            result: 'starting',
+            message: i18n('Configuring Stalwart'),
+          }),
+        },
+        requires: [],
+      })
+    }
     const baseUrls = (await consoleBaseUrls(runEffects).const()) ?? []
 
     return sdk.Daemons.of(runEffects)
