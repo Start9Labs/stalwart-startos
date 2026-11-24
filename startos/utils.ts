@@ -73,6 +73,16 @@ export function hashPassword(password: string, rounds = 600_000) {
   return `$pbkdf2-sha256$i=${rounds},l=32$${phcBase64(salt)}$${phcBase64(hash)}`
 }
 
+export const adminPasswordInput = sdk.Value.text({
+  name: i18n('Admin password'),
+  description: i18n(
+    'The password of the admin account. If two-factor authentication is enabled, use an app password for that account instead, created with Permissions › Type set to "Same permissions as account". If you no longer have access, stop Stalwart and run Set Admin Password.',
+  ),
+  required: true,
+  default: null,
+  masked: true,
+})
+
 type JmapCall = [string, Record<string, unknown>, string]
 
 // `credentials` is `user:password`.

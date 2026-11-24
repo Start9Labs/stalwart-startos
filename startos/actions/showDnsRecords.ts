@@ -2,21 +2,15 @@ import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { hostId } from '../interfaces'
 import { sdk } from '../sdk'
-import { adminUser, httpPort, jmapQuery, smtpPort } from '../utils'
+import {
+  adminPasswordInput,
+  adminUser,
+  httpPort,
+  jmapQuery,
+  smtpPort,
+} from '../utils'
 
-const { InputSpec, Value } = sdk
-
-const inputSpec = InputSpec.of({
-  password: Value.text({
-    name: i18n('Admin password'),
-    description: i18n(
-      'The password of the admin account. If two-factor authentication is enabled, use an app password for that account instead, created with Permissions › Type set to "Same permissions as account". If you no longer have access, stop Stalwart and run Set Admin Password.',
-    ),
-    required: true,
-    default: null,
-    masked: true,
-  }),
-})
+const inputSpec = sdk.InputSpec.of({ password: adminPasswordInput })
 
 export const showDnsRecords = sdk.Action.withInput(
   'show-dns-records',
