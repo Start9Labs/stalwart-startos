@@ -22,6 +22,8 @@ export const sieveExternalPort = 14190
 export const etcDir = '/etc/stalwart'
 export const dataDir = '/var/lib/stalwart'
 export const webuiDir = `${dataDir}/webui`
+// Added to the image by the Dockerfile, checked against the manifest's WEBUI_SHA256.
+export const webuiBundle = '/opt/webui.zip'
 export const stalwartUid = 2000
 
 // Volume subdirectory holding the 0.16 store and migration state the 1.0 migration left behind.
@@ -303,9 +305,21 @@ export async function syncConsoleClient(api: Api, baseUrls: string[]) {
         { update: { [webui.id]: { oauthClientId: consoleClientId } } },
         'c1',
       ],
-      ['x:Action/set', { create: { reload: { '@type': 'UpdateApps' } } }, 'c2'],
     ])
   }
+}
+
+// Stalwart keeps serving its cached copy of a bundle until UpdateApps replaces it.
+export async function installConsoleBundle(api: Api) {
+  const [webui] = await jmapQuery<{ id: string }>(api, 'Application', ['id'])
+  await jmap(api, [
+    [
+      'x:Application/set',
+      { update: { [webui.id]: { resourceUrl: `file://${webuiBundle}` } } },
+      'c1',
+    ],
+    ['x:Action/set', { create: { reload: { '@type': 'UpdateApps' } } }, 'c2'],
+  ])
 }
 
 type Account = {

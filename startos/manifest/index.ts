@@ -14,7 +14,14 @@ export const manifest = setupManifest({
   images: {
     stalwart: {
       source: {
-        dockerTag: 'stalwartlabs/stalwart:v1.2.0',
+        dockerBuild: {
+          buildArgs: {
+            IMAGE: 'stalwartlabs/stalwart:v1.2.0',
+            WEBUI_VERSION: 'v2.1.1',
+            WEBUI_SHA256:
+              '2c650f9c155bdb7b4087c0a55dd94f4a211dc0b160f49611cb5ad80383d1b1b7',
+          },
+        },
       },
       arch: ['x86_64', 'aarch64'],
     },
