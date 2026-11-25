@@ -6,8 +6,10 @@ Receiving and storing mail works with the domain, the public address and the DNS
 
 ## Documentation
 
-- [Domains and DNS](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/domains) — managing hosted domains, the DNS records each one needs, TLS certificates and DKIM key rotation.
-- [Setting up DNS](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/install/dns.md) — what every DNS record a mail server publishes is for.
+- [Domains](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/email/domains.md) — managing the domains the server hosts mail for.
+- [DNS](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/server/dns) — what every DNS record a mail server publishes is for, and managing them automatically through a DNS provider.
+- [TLS certificates](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/server/tls) — certificates, ACME and its challenges.
+- [DKIM](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/mta/authentication/dkim) — signing outbound mail and rotating DKIM keys.
 - [Securing your server](https://github.com/stalwartlabs/website/blob/main/src/content/docs/docs/install/security.md) — which ports to expose, administrator roles, access control.
 - [Management](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/management) — the web console, the account manager, tasks, troubleshooting and the command-line client.
 - [Accounts and groups](https://github.com/stalwartlabs/website/tree/main/src/content/docs/docs/auth/accounts) — creating user accounts, aliases, groups and quotas.
