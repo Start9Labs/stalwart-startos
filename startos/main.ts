@@ -1,4 +1,4 @@
-import { storeJson } from './fileModels/store.json'
+import { configJson, storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { consoleBaseUrls } from './interfaces'
 import { withMaintenanceStalwart } from './maintenance'
@@ -22,7 +22,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
       adminPasswordSet,
     }))
     .const(effects)
-  if (!store?.adminPasswordSet || !store.hostname || !store.domain) {
+  if (
+    !store?.adminPasswordSet ||
+    !store.hostname ||
+    !store.domain ||
+    ((await storeJson.read((s) => s.bootstrapped).once()) &&
+      (await configJson.read().once()) === null)
+  ) {
     throw new Error(i18n('Stalwart has not been set up yet'))
   }
   const { hostname, domain } = store
@@ -71,7 +77,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
       })
       .addDaemon('stalwart', {
         subcontainer: getStalwartSub(runEffects, 'stalwart-sub'),
-        exec: { command: sdk.useEntrypoint() },
+        exec: {
+          command: sdk.useEntrypoint(),
+          env: { STALWART_RECOVERY_MODE_BIND: '127.0.0.1' },
+        },
         ready: { display: i18n('Mail Server'), fn: checkLive },
         requires: ['maintenance'],
       })

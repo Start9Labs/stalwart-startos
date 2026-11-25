@@ -43,6 +43,7 @@ export async function withMaintenanceStalwart(
           env: {
             // A random 32-character secret needs no key stretching.
             STALWART_RECOVERY_ADMIN: `${recoveryAdminUser}:${hashPassword(password, 1000)}`,
+            STALWART_RECOVERY_MODE_BIND: '127.0.0.1',
             STALWART_RECOVERY_MODE_PORT: String(maintenancePort),
             ...(!normalMode && { STALWART_RECOVERY_MODE: '1' }),
             ...env,
