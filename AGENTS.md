@@ -35,7 +35,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 ## This repo
 
 - **Make the package's own JMAP calls only inside `withMaintenanceStalwart`, and never persist, log or pass on its password** — that run is the only time a recovery admin exists, and its random password is what guards it.
-- **Set `STALWART_RECOVERY_MODE_BIND=127.0.0.1` on every Stalwart the package starts, the server included** — without it Stalwart opens its recovery listener on `[::]`, where every other service on the server can reach it, and a server started without `etc/config.json` enters recovery mode by itself, on the exported port 8080.
+- **Set `STALWART_RECOVERY_MODE_BIND=127.0.0.1` on every Stalwart the package starts, the server included** — without it Stalwart opens its recovery listener on `[::]`, where every other service on the server can reach it.
 - **Keep every maintenance run but the second bootstrap run in recovery mode; don't call `clearBindings` from `main`** — disabling a binding withdraws its onion and I2P addresses, which changes the console's redirect list and re-runs the maintenance in a loop.
 - **Never store the admin password, only `adminPasswordHash`, and delete the hash once the maintenance run has applied it** — reapplying it on every start would clear the account's two-factor secret and end its sessions each time.
 - **Actions that need the API ask the user for the admin password** — the package holds no credential while Stalwart serves.
