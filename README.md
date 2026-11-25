@@ -44,7 +44,7 @@ Three subcontainers run from that image on every start:
 
 During first-run bootstrap (see [Installation and First-Run Flow](#installation-and-first-run-flow)) the same image runs briefly as `bootstrap-sub`, `bootstrap-chown`, `configure-sub` and `configure-chown`; none of them exist once the service is running normally.
 
-Every JMAP call the package makes on its own goes to one of those temporary runs (`withMaintenanceStalwart`). Each run generates a random password and starts Stalwart in recovery mode (`STALWART_RECOVERY_MODE=1`) with `STALWART_RECOVERY_ADMIN=stalwart-startos:<hash>`; Stalwart accepts a PHC hash in place of the password, and the package authenticates as `stalwart-startos`. Recovery mode opens none of the configured listeners and no mail queue, only one HTTP listener on `STALWART_RECOVERY_MODE_PORT`, which the package sets to 18080. No interface binds that port, so StartOS forwards nothing to it from outside the server. Stalwart hardcodes the recovery listener's address to `[::]`, so other services on the server can reach it while a run lasts; the run's random 32-character password is what guards it. The second bootstrap run is the exception: it has to be a normal start, so it opens the configured listeners. It disables all of the package's bindings with `clearBindings` for its duration and re-runs `setInterfaces` afterwards, which enables them again with the user's address choices intact. When a run stops, the package discards the password. The server itself starts without `STALWART_RECOVERY_ADMIN`, so no recovery admin exists while it serves, and the package holds no credential for it. The user signs in as `admin`, which Stalwart resolves to its current default email domain. This is a regular account with the Admin role, whose password `set-admin-password` sets.
+Every JMAP call the package makes on its own goes to one of those temporary runs (`withMaintenanceStalwart`). Each run generates a random password and starts Stalwart in recovery mode (`STALWART_RECOVERY_MODE=1`) with `STALWART_RECOVERY_ADMIN=stalwart-startos:<hash>`; Stalwart accepts a PHC hash in place of the password, and the package authenticates as `stalwart-startos`. Recovery mode opens none of the configured listeners and no mail queue, only one HTTP listener on `STALWART_RECOVERY_MODE_BIND`:`STALWART_RECOVERY_MODE_PORT`, which the package sets to `127.0.0.1:18080`. No interface binds that port and the listener is on loopback, so neither other services on the server nor anything outside it can reach it; the run's random 32-character password guards it besides. The server itself also starts with `STALWART_RECOVERY_MODE_BIND=127.0.0.1`, so any recovery listener it opens stays on loopback. The second bootstrap run is the exception: it has to be a normal start, so it opens the configured listeners. It disables all of the package's bindings with `clearBindings` for its duration and re-runs `setInterfaces` afterwards, which enables them again with the user's address choices intact. When a run stops, the package discards the password. The server itself starts without `STALWART_RECOVERY_ADMIN`, so no recovery admin exists while it serves, and the package holds no credential for it. The user signs in as `admin`, which Stalwart resolves to its current default email domain. This is a regular account with the Admin role, whose password `set-admin-password` sets.
 
 ## Volume and Data Layout
 
@@ -68,7 +68,7 @@ The package owns two files; Stalwart's own configuration lives in its database a
 | `store.json`      | JSON   | `setup` (hostname, domain) and `set-admin-password` (password hash) | Those actions, bootstrap (`bootstrapped`), and `main` (deletes the applied hash) | Survive, but are never validated |
 | `etc/config.json` | JSON   | Stalwart itself, when bootstrap completes                           | Stalwart, if the datastore is moved                                              | Survive                          |
 
-`store.json` never holds a password. `set-admin-password` stores `adminPasswordSet: true` and `adminPasswordHash`, a `$pbkdf2-sha256$` PHC hash of the new password of `admin` in Stalwart's current default email domain. On the next start, the maintenance run writes the hash to the account over JMAP, where Stalwart stores a recognised hash as-is, and deletes it from `store.json`, so the account's password is replaced once per run of the action. Bootstrap sets `bootstrapped: true` once both of its runs succeed; `main` launches nothing until it is set, and init skips bootstrap once it is. Until then each init re-runs bootstrap, skipping the first run when `etc/config.json` already exists. Removing `bootstrapped` from a working install re-runs the second run, which re-applies the settings listed below over any changed in the console.
+`store.json` never holds a password. `set-admin-password` stores `adminPasswordSet: true` and `adminPasswordHash`, a `$pbkdf2-sha256$` PHC hash of the new password of `admin` in Stalwart's current default email domain. On the next start, the maintenance run writes the hash to the account over JMAP, where Stalwart stores a recognised hash as-is, and deletes it from `store.json`, so the account's password is replaced once per run of the action. Bootstrap sets `bootstrapped: true` once both of its runs succeed; `main` launches nothing until it is set, and init skips bootstrap once it is. Once it is set, `main` refuses to start, with "Stalwart has not been set up yet", if `etc/config.json` is missing. Until then each init re-runs bootstrap, skipping the first run when `etc/config.json` already exists. Removing `bootstrapped` from a working install re-runs the second run, which re-applies the settings listed below over any changed in the console.
 
 ## Dependencies
 
@@ -173,10 +173,11 @@ volumes:
 file_models:
   - store.json
   - etc/config.json
-startos_managed_env_vars: # maintenance runs only
-  - STALWART_RECOVERY_ADMIN
-  - STALWART_RECOVERY_MODE
-  - STALWART_RECOVERY_MODE_PORT
+startos_managed_env_vars:
+  - STALWART_RECOVERY_ADMIN # maintenance runs only
+  - STALWART_RECOVERY_MODE # maintenance runs only
+  - STALWART_RECOVERY_MODE_BIND # every run, the server included
+  - STALWART_RECOVERY_MODE_PORT # maintenance runs only
 dependencies: none
 interfaces:
   jmap-dav: { type: api, port: 8080 }

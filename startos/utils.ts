@@ -5,7 +5,7 @@ import { sdk } from './sdk'
 
 export const httpPort = 8080
 export const consolePort = 8081
-// Bound by no interface, so StartOS forwards nothing to it; Stalwart listens on it at `[::]`.
+// Bound by no interface, so StartOS forwards nothing to it; Stalwart listens on it at 127.0.0.1.
 export const maintenancePort = 18080
 export const smtpPort = 25
 export const submissionsPort = 465
