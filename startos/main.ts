@@ -7,6 +7,7 @@ import {
   armAcme,
   checkLive,
   getStalwartSub,
+  installConsoleBundle,
   separateConsoleListener,
   setAdminAccountPassword,
   syncConsoleClient,
@@ -67,6 +68,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
                 await separateConsoleListener(api)
                 await armAcme(api, hostname, domain)
                 await syncConsoleClient(api, baseUrls)
+                await installConsoleBundle(api)
               },
             )
             return null

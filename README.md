@@ -32,7 +32,7 @@
 
 ## Image and Container Runtime
 
-The package runs upstream's unmodified Docker image on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`). The image has no init system.
+The package runs upstream's Docker image on `x86_64` and `aarch64`, with the image's entrypoint (`stalwart --config /etc/stalwart/config.json`) and one file added: the web console bundle (`stalwartlabs/webui`'s `webui.zip`) at `/opt/webui.zip`, fetched at build time from a pinned release and checked against its sha256. The image has no init system.
 
 Three subcontainers run from that image on every start:
 
@@ -54,7 +54,7 @@ One volume, `main`, holds everything Stalwart persists plus the package's own st
 | -------------- | ------------------- | ----------------------------------------------------------------------------------------------------- |
 | `etc/`         | `/etc/stalwart`     | `config.json`, which names the datastore and nothing else                                             |
 | `data/`        | `/var/lib/stalwart` | The RocksDB datastore — mail, calendars, contacts, files, spam model, and every server setting object |
-| `data/webui/`  | (inside the above)  | The unpacked web console bundle, so restarts do not re-download it                                    |
+| `data/webui/`  | (inside the above)  | Stalwart's unpacked copy of the web console bundle, recreated on every start                          |
 | `store.json`   | not mounted         | StartOS-side state: hostname, email domain, whether an admin password is set, a pending password hash |
 
 Everything Stalwart configures after bootstrap — listeners, domains, DKIM keys, ACME state, accounts, spam rules — is a record inside the RocksDB datastore, not a file. There is no configuration file to edit by hand.
@@ -109,7 +109,7 @@ Install raises two critical tasks and starts nothing until both are done: `setup
 
 The whole sequence takes well under a minute and reports progress as "Configuring Stalwart". If it fails it retries until it succeeds or a five-minute timeout expires; the log names the JMAP method and error. After a timeout, bootstrap runs again at the next container init (a server restart or a package update).
 
-Stalwart's setup wizard is therefore never shown. On first start of the real daemon Stalwart downloads the web console bundle from GitHub releases and the ASN/GeoIP tables it uses for sender reputation; without outbound HTTPS the console paths return 404 until a download succeeds, and the mail server still runs.
+Stalwart's setup wizard is therefore never shown. Every start's maintenance run points the WebUI `Application`'s `resourceUrl` at `file:///opt/webui.zip` and runs `UpdateApps`, so the console Stalwart serves is always the bundle in the image, replacing whatever copy Stalwart cached; a `resourceUrl` changed in the console is reset on the next start. Stalwart's defaults point that URL at GitHub's moving `v2` release, which the first bootstrap run fetches before the package can change it; that copy is replaced before the server first serves. Stalwart still downloads the ASN/GeoIP tables it uses for sender reputation on first start, which needs outbound HTTPS; the mail server runs without them.
 
 The Let's Encrypt certificate for the mail ports is obtained by Stalwart, not StartOS: the ACME HTTP-01 challenge arrives on port 80 of the public address, is redirected to 443 by StartTunnel's per-IP HTTP redirect (on by default; `start-tunnel http-redirect list` shows it) or by StartOS behind a router that forwards port 80, and is proxied to Stalwart's HTTP listener like any other request for that domain. That only works once the hostname has been added as a public domain on the `jmap-dav` interface, which serves it on 443, and resolves in DNS; until then Stalwart serves a self-signed certificate. StartOS issues its own certificate for the same hostname over TLS-ALPN-01 on 443, so a valid certificate on the console says nothing about port 80. Stalwart retries transient issuance failures automatically, with exponential backoff. Repeated failed validations can exhaust Let's Encrypt's per-account, per-hostname failure allowance, which refills once every 12 minutes. Further orders then receive a rate limit and a `Retry-After` specifying the remaining wait. Stalwart waits at least that long and records the reason in the task's `failureReason` ("Rate limited. Retry after N seconds", visible with `x:Task/get`). The `acme.renew-backoff` and `task-manager.task-retry` events are DEBUG-level, so early retries can be absent from the INFO log; repeated failures can also produce a WARN-level `task-manager.task-stalled` event. Every start's maintenance run also calls `armAcme`, which, when no unexpired certificate covers the hostname and the domain is still on automatic management, creates an `AcmeRenewal` singleton due immediately. Upstream replaces the previous singleton; explicit destruction of an automatic domain's renewal task is forbidden. A restart therefore requests an immediate retry and resets Stalwart's backoff, but inside a Let's Encrypt `Retry-After` window that retry is refused the same way and issuance still waits for the window to close. Once a certificate exists, Stalwart's own renewal schedule takes over and `armAcme` does nothing.
 
@@ -141,7 +141,7 @@ One check, on the daemon; the `maintenance` oneshot before it is not a health ch
 
 The `main` volume is backed up. StartOS stops the service first, so the RocksDB files are captured at rest and consistent. The datastore's account credentials and `store.json`'s hostname, domain and password-set state travel with the backup, so a restored instance needs no re-setup.
 
-The unpacked WebUI bundle and the downloaded ASN tables are included and are re-downloaded anyway if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
+The unpacked WebUI bundle and the downloaded ASN tables are included; the bundle is reinstalled from the image on every start and the tables are re-downloaded if missing. Mail volume is the whole backup: a busy server's datastore is the largest thing on the disk, and every backup copies it in full.
 
 A restored instance starts with the same DKIM keys, ACME account and certificate, so no DNS change is needed. What does not come back is StartOS host state: the public domain on the `jmap-dav` interface, the enabled public addresses on the mail bindings and the outbound gateway are gone after a restore and have to be re-added. If the restore lands on a different public IP, the `A` records, and the PTR record when sending directly, are the only DNS to update. Restoring is only possible while the package is not installed; StartOS refuses to restore over an existing install.
 
@@ -155,7 +155,7 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 4. POP3 is disabled.
 5. Stalwart's setup wizard is bypassed. Storage backends (PostgreSQL, S3, …), external directories (LDAP, OIDC, SQL) and DNS-provider automation are not offered at setup; all remain available in the console afterwards.
 6. Hostname and email domain are set once from StartOS; later changes are made in the console and are not reflected in `store.json`. Bootstrap, ACME retry checks and `show-dns-records`' address records use those saved values. Admin password resets and API authentication follow Stalwart's current default email domain.
-7. The web console is fetched from GitHub at first start rather than shipped in the image, so the console (not the mail server) depends on outbound HTTPS once.
+7. The web console is pinned to the release in the image and changes only with a package update. Stalwart's own console update (`UpdateApps`) reinstalls that same bundle, and a different `resourceUrl` set in the console is reset on the next start.
 8. Enterprise-licensed features (LLM spam classification, multi-tenancy, some telemetry views) are unavailable, as in the community edition upstream.
 9. DANE is disabled for outbound delivery: the StartOS resolver forwards queries without DNSSEC validation, and Stalwart turns DANE off rather than defer mail (`registry.build-warning` at every start). The TLSA records in the zone file only help senders if the user's own zone is DNSSEC-signed.
 
@@ -165,7 +165,7 @@ What this package cannot do, or does differently from a Stalwart installed by ha
 
 ```yaml
 package_id: stalwart
-image: stalwartlabs/stalwart
+image: stalwartlabs/stalwart + pinned stalwartlabs/webui bundle (/opt/webui.zip)
 architectures: [x86_64, aarch64]
 subcontainers: [maintenance-chown, maintenance-sub, stalwart-sub]
 volumes:
